@@ -1,0 +1,14 @@
+title AMM
+
+==Block t-1==
+IT->POOL: Submit Swap/Fee or both
+
+UIT->POOL: Submit Swap
+
+note over UIT, POOL:test text
+
+Chainlink-->POOL: CEX pricing information
+
+==Block t==
+
+IT->POOL: Submit Swap using calculated combined fees
