@@ -4,7 +4,6 @@ import logging
 from functools import cache
 from strategies.dynamic_fees.price_feed import PriceFeed
 
-
 class AMM:
     def __init__(self,
                  price,
@@ -24,6 +23,7 @@ class AMM:
 
         self.L = L
         self.base_fee = base_fee
+       
        
         self.cut_off_percentile = 0.85
         self.m = m
@@ -46,19 +46,6 @@ class AMM:
         # submitted fee
         self.submitted_fees_multiple_threshold = 3
         self.submitted_fees = []
-
-        # Liquidity ranges
-        self.liquidity_ranges = []  # List of tuples (lower_bound, upper_bound, liquidity)
-
-    def add_liquidity(self, lower_bound: float, upper_bound: float, liquidity: float):
-        """
-        Add liquidity to a specific price range.
-        Args:
-            lower_bound (float): The lower bound of the price range.
-            upper_bound (float): The upper bound of the price range.
-            liquidity (float): The amount of liquidity to add.
-        """
-        self.liquidity_ranges.append((lower_bound, upper_bound, liquidity))
 
     @cache
     def endogenous_dynamic_fee(self, block_id: int) -> float:
@@ -151,8 +138,7 @@ class AMM:
         """
         self.price_x_before_swap = self.sqrt_price**2
         self.price_x_after_swap = new_sqrt_price**2
-        total_liquidity = sum(liquidity for lower, upper, liquidity in self.liquidity_ranges if lower <= new_sqrt_price <= upper)
-        return (new_sqrt_price - self.sqrt_price) * total_liquidity / (self.sqrt_price * new_sqrt_price)
+        return (new_sqrt_price - self.sqrt_price) * self.L / (self.sqrt_price * new_sqrt_price)
 
     def calculate_amount_of_y_tokens_involved_in_swap(self, new_sqrt_price: float) -> float:
         """
@@ -161,8 +147,7 @@ class AMM:
         Returns:
             float: The amount of Y tokens.
         """
-        total_liquidity = sum(liquidity for lower, upper, liquidity in self.liquidity_ranges if lower <= new_sqrt_price <= upper)
-        return -(new_sqrt_price - self.sqrt_price) * total_liquidity
+        return -(new_sqrt_price - self.sqrt_price) * self.L
    
     @cache
     def get_bid_and_ask_of_amm(self, current_amm_price: float):
@@ -172,7 +157,7 @@ class AMM:
             float, float: The bid and ask prices.
         """
         bid_price = current_amm_price * (2 - (1 + self.base_fee))
-        ask_price = current_amm_price * (1 + self.base_fee)
+        ask_price = current_amm_price * (1+ self.base_fee
         return bid_price, ask_price
 
     def trade_to_price_with_gas_fee(self,
@@ -264,19 +249,4 @@ class AMM:
         # Increment the total number of blocks
         self.total_blocks += 1
         # Reset the first transaction flag
-        self.first_transaction = Truelse:
-                new_sqrt_price = math.sqrt(efficient_price / (1 - self.pool_fee))
-        # Calculate the amounts and fee
-        x = self.calculate_x(new_sqrt_price)
-        y = self.calculate_y(new_sqrt_price)
-        fee = gas
-        return (x, y, fee)
-
-    def calculate_dynamic_fee(self, trade_direction: str):
-        l1_bid_pressure, l1_ask_pressure = self.process_order_book_data()
-        if trade_direction == 'buy' and l1_ask_pressure > l1_bid_pressure:
-            return self.base_fee * 1.5  
-        elif trade_direction == 'sell' and l1_bid_pressure > l1_ask_pressure:
-            return self.base_fee * 1.5  
-        else:
-            return self.base_fee * 0.5
+        self.first_transaction = True

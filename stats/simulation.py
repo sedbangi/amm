@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker as mticker
@@ -13,19 +14,18 @@ class Simulation:
     def __init__(self,
                  initial_price: float,
                  daily_sigma: float,
-                 blocks_per_day: int,
                  days: int,
                  gas_cost: float,
                  liquidity_per_basis_point: float,
-                 pool_fee: float,
+                 base_pool_fee: float,
                  paths: int) -> None:
-        self.initial_price = 1200
-        self.daily_sigma = 0.05
+        self.initial_price = initial_price
+        self.daily_sigma = daily_sigma
         self.blocks_per_day = 60 * 60 * 24 / 13.2
-        self.days = 365
+        self.days = days
         self.gas_cost = gas_cost
         self.liquidty_per_basis_point = liquidity_per_basis_point
-        self.pool_fee = pool_fee
+        self.base_pool_fee = base_pool_fee
         self.paths = paths
        
     @njit
@@ -37,8 +37,8 @@ class Simulation:
         (2) total gas burned
         """
         results = np.zeros((3, self.paths))
-       
-        for j in range(self.paths):
+        list_swapper_ids = list(np.arange(1, 1001))
+        for path in range(self.paths):
             # save the initial price
             p0 = self.initial_price
             # volatility @ block level
@@ -49,25 +49,33 @@ class Simulation:
             prices = np.exp(z - (np.arange(total_number_of_blocks) * sigma**2)/2)
             prices = (prices / prices[0]) * p0
 
-            amm = AMM(sqrt_price,
-                      self.pool_fee, self.liquidty_per_basis_point,
+            amm = AMM(prices[0],
+                      L=166_666.67,
                       base_fee=0.003,
                       m=0.5,
-                      n=2,
+                      n=2,  
                       alpha=0.5,
-                      liquidity_threshold=100,
                       intent_threshold=0.95)
             loss_versus_rebalancing = 0.0
             arbitrage_gain = 0.0
             gas = 0.0
-            for k in range(1, total_number_of_blocks):
-                number_of_swaps_in_block_k = 100 # randomize on a grid
-                for s in range(1, number_of_swaps_in_block_k):
-                    x0, y0, f = amm.trade_to_price_with_gas_fee(prices[k], self.gas_cost)
-                    loss_versus_rebalancing += -x0 * prices[k] - y0
+            for block in range(1, total_number_of_blocks):
+                number_of_swaps_in_block_k = 100
+                randomized_submitted_fee = np.random.uniform(0.0, 0.003, number_of_swaps_in_block_k)
+                # NOTE: adapt for not submitting any fee
+                random_swappers = random.sample(list_swapper_ids, number_of_swaps_in_block_k)
+                for swap in range(1, number_of_swaps_in_block_k):
+                    x0, y0, f = amm.trade_to_price_with_gas_fee(
+                        efficient_off_chain_price=prices[block-1],
+                        submitted_fee=randomized_submitted_fee[swap],
+                        swapper_id=random_swappers[swap],
+                        block_id=block-1,
+                        gas=gas)
+                    loss_versus_rebalancing += -x0 * prices[block] - y0
                     if x0 != 0.0:
-                        arbitrage_gain += x0 * prices[k] + y0 - self.gas_cost
+                        arbitrage_gain += x0 * prices[block] + y0 - self.gas_cost
                         gas += self.gas_cost
-
-            results[:, k] = [loss_versus_rebalancing/days, arbitrage_gain/days, gas/days]
+            results[:, path] = [loss_versus_rebalancing/self.days,
+                             arbitrage_gain/self.days,
+                             gas/self.days]
         return results
