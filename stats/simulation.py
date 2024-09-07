@@ -1,4 +1,4 @@
-import random
+mport random
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker as mticker
@@ -36,6 +36,7 @@ class Simulation:
         (1) arb's gain (negative),
         (2) total gas burned
         """
+        #TODO: simulat order_book_press
         results = np.zeros((3, self.paths))
         list_swapper_ids = list(np.arange(1, 1001))
         for path in range(self.paths):
@@ -48,10 +49,11 @@ class Simulation:
             # adding a risk-neutral drift, so that the price process is a martingale
             prices = np.exp(z - (np.arange(total_number_of_blocks) * sigma**2)/2)
             prices = (prices / prices[0]) * p0
-
+           
+            _base_fee = 0.003
             amm = AMM(prices[0],
                       L=166_666.67,
-                      base_fee=0.003,
+                      base_fee=_base_fee,
                       m=0.5,
                       n=2,  
                       alpha=0.5,
@@ -61,7 +63,7 @@ class Simulation:
             gas = 0.0
             for block in range(1, total_number_of_blocks):
                 number_of_swaps_in_block_k = 100
-                randomized_submitted_fee = np.random.uniform(0.0, 0.003, number_of_swaps_in_block_k)
+                randomized_submitted_fee = np.random.uniform(0.0, _base_fee, number_of_swaps_in_block_k)
                 # NOTE: adapt for not submitting any fee
                 random_swappers = random.sample(list_swapper_ids, number_of_swaps_in_block_k)
                 for swap in range(1, number_of_swaps_in_block_k):

@@ -1,9 +1,8 @@
-import numpy as np
+mport numpy as np
 import math
 import logging
 from functools import cache
 from strategies.dynamic_fees.price_feed import PriceFeed
-
 
 class AMM:
     def __init__(self,
@@ -46,19 +45,6 @@ class AMM:
         # submitted fee
         self.submitted_fees_multiple_threshold = 3
         self.submitted_fees = []
-
-        # Liquidity ranges
-        self.liquidity_ranges = []  # List of tuples (lower_bound, upper_bound, liquidity)
-
-    def add_liquidity(self, lower_bound: float, upper_bound: float, liquidity: float):
-        """
-        Add liquidity to a specific price range.
-        Args:
-            lower_bound (float): The lower bound of the price range.
-            upper_bound (float): The upper bound of the price range.
-            liquidity (float): The amount of liquidity to add.
-        """
-        self.liquidity_ranges.append((lower_bound, upper_bound, liquidity))
 
     @cache
     def endogenous_dynamic_fee(self, block_id: int) -> float:
@@ -151,8 +137,7 @@ class AMM:
         """
         self.price_x_before_swap = self.sqrt_price**2
         self.price_x_after_swap = new_sqrt_price**2
-        total_liquidity = sum(liquidity for lower, upper, liquidity in self.liquidity_ranges if lower <= new_sqrt_price <= upper)
-        return (new_sqrt_price - self.sqrt_price) * total_liquidity / (self.sqrt_price * new_sqrt_price)
+        return (new_sqrt_price - self.sqrt_price) * self.L / (self.sqrt_price * new_sqrt_price)
 
     def calculate_amount_of_y_tokens_involved_in_swap(self, new_sqrt_price: float) -> float:
         """
@@ -161,8 +146,7 @@ class AMM:
         Returns:
             float: The amount of Y tokens.
         """
-        total_liquidity = sum(liquidity for lower, upper, liquidity in self.liquidity_ranges if lower <= new_sqrt_price <= upper)
-        return -(new_sqrt_price - self.sqrt_price) * total_liquidity
+        return -(new_sqrt_price - self.sqrt_price) * self.L
    
     @cache
     def get_bid_and_ask_of_amm(self, current_amm_price: float):
@@ -172,7 +156,7 @@ class AMM:
             float, float: The bid and ask prices.
         """
         bid_price = current_amm_price * (2 - (1 + self.base_fee))
-        ask_price = current_amm_price * (1 + self.base_fee)
+        ask_price = current_amm_price * (1+ self.base_fee)
         return bid_price, ask_price
 
     def trade_to_price_with_gas_fee(self,
@@ -186,6 +170,8 @@ class AMM:
             self.current_block_id = block_id
             self.begin_block(block_id=block_id)
         elif self.current_block_id != block_id:
+            # NOTE: in python, end_block called
+            # at the beginning of first swap of the next block
             self.end_block()
             self.current_block_id += 1
             self.begin_block()
@@ -211,6 +197,7 @@ class AMM:
             if swapper_id not in self.swapper_intent:
                 self.swapper_intent[swapper_id] = 0
             self.swapper_intent[swapper_id] += 1
+        # TODO: flush the history of swapper intent after a certain number of blocks
         if informed:
             if (amm_ask_price > efficient_off_chain_price) and (amm_bid_price < efficient_off_chain_price):
                 # efficient price is within the current bid-ask spread, no arb opportunity available
@@ -223,19 +210,21 @@ class AMM:
         """
         if (amm_ask_price < efficient_off_chain_price):
             if self.order_bool_pressure > 0:
-                _fee =  1 + self.pool_fee_in_opposite_direction
+                # market-makers are quoting  large quantities at the ask price
+                _fee =  1 + self.pool_fee_in_market_direction
             elif self.order_bool_pressure < 0:
-                _fee = 1 + self.pool_fee_in_market_direction
+                # market-makers are quoting  large quantities at the bid price
+                _fee = 1 + self.pool_fee_in_opposite_direction
             else:
                 _fee = 1 + self.base_fee
             new_sqrt_price = math.sqrt(efficient_off_chain_price / _fee)
             x, y, fee = self.buy_x_tokens_for_y_tokens(new_sqrt_price=new_sqrt_price,
                                                         pool_fee_plus_one=_fee)
-        else:
+        elif (amm_bid_price > efficient_off_chain_price):
             if self.order_bool_pressure > 0:
-                _fee =  1 + self.pool_fee_in_market_direction
+                _fee =  1 + self.pool_fee_in_opposite_direction
             elif self.order_bool_pressure < 0:
-                _fee = 1 + self.pool_fee_in_opposite_direction
+                _fee = 1 + self.pool_fee_in_market_direction
             else:
                 _fee = 1 + self.base_fee
             new_sqrt_price = math.sqrt(efficient_off_chain_price * (2 - _fee))
@@ -251,7 +240,12 @@ class AMM:
    
     @cache
     def begin_block(self, block_id: int):
-        self.order_bool_pressure = self.price_feed.l1_order_book_pressure()
+        self.logger.info(f"Beginning block {block_id}.")
+        try:
+            self.order_bool_pressure = self.price_feed.l1_order_book_pressure()
+        except Exception as e:
+            #TODO: include error handing for broken price_feed in solidity
+            self.logger.exception(f"{e}")
        
     def end_block(self):
         """
@@ -264,19 +258,4 @@ class AMM:
         # Increment the total number of blocks
         self.total_blocks += 1
         # Reset the first transaction flag
-        self.first_transaction = Truelse:
-                new_sqrt_price = math.sqrt(efficient_price / (1 - self.pool_fee))
-        # Calculate the amounts and fee
-        x = self.calculate_x(new_sqrt_price)
-        y = self.calculate_y(new_sqrt_price)
-        fee = gas
-        return (x, y, fee)
-
-    def calculate_dynamic_fee(self, trade_direction: str):
-        l1_bid_pressure, l1_ask_pressure = self.process_order_book_data()
-        if trade_direction == 'buy' and l1_ask_pressure > l1_bid_pressure:
-            return self.base_fee * 1.5  
-        elif trade_direction == 'sell' and l1_bid_pressure > l1_ask_pressure:
-            return self.base_fee * 1.5  
-        else:
-            return self.base_fee * 0.5
+        self.first_transaction = True
