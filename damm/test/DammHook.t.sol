@@ -109,16 +109,27 @@ contract TestDammHook is Test, Deployers {
         // This should just use `BASE_FEE` since the gas price is the same as the current average
         uint256 balanceOfToken1Before = currency1.balanceOfSelf();
 
-        swapRouter.swap(key, params, testSettings, ZERO_BYTES);
+        uint256 submittedDeltaFee = 1000;
+        bytes memory hookData = hook.getHookData(submittedDeltaFee);
+        swapRouter.swap(key, params, testSettings, hookData);
+
+        submittedDeltaFee = 2000;
+        hookData = hook.getHookData(submittedDeltaFee);
+        swapRouter.swap(key, params, testSettings, hookData);
         
+        submittedDeltaFee = 1500;
+        hookData = hook.getHookData(submittedDeltaFee);
+        swapRouter.swap(key, params, testSettings, hookData);
+
         uint256 balanceOfToken1After = currency1.balanceOfSelf();
         uint256 outputFromBaseFeeSwap = balanceOfToken1After -
             balanceOfToken1Before;
 
-        // assertGt(balanceOfToken1After, balanceOfToken1Before);
+        assertGt(balanceOfToken1After, balanceOfToken1Before);
 
         console.log("Balance of token 1 before swap", balanceOfToken1Before);
-        console.log("Here");
+        console.log("Balance of token 1 after swap", balanceOfToken1After);
+        console.log("Base Fee Output", outputFromBaseFeeSwap);
     }
 
 
