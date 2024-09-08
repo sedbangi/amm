@@ -1,43 +1,68 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@uniswap/v4-core/contracts/interfaces/IUniswapV4Pool.sol";
+import "@uniswap/v4-core/contracts/interfaces/IUniswapV4Hook.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract AMM is Ownable {
+contract AMM is IUniswapV4Hook, Ownable {
     using SafeMath for uint256;
 
+    uint256 public sqrtPrice;
+    uint256 public L;
     uint256 public baseFee;
+    int256 public poolFee;
+    uint256 public poolFeeInMarketDirection;
+    uint256 public poolFeeInOppositeDirection;
+    uint256 public orderBoolPressure;
     uint256 public m;
     uint256 public n;
     uint256 public alpha;
+    uint256 public intentThreshold;
     uint256 public cutOffPercentile;
-    uint256 public L;
-    uint256 public sqrtPrice;
-    uint256 public priceBeforePreviousBlock;
-    uint256 public priceAfterPreviousBlock;
     bool public firstTransaction;
     uint256 public totalBlocks;
+    uint256 public priceBeforePreviousBlock;
+    uint256 public priceAfterPreviousBlock;
+    uint256 public slippage;
     uint256 public currentBlockId;
+    bool public firstTransaction;
     uint256[] public listSubmittedFees;
-    mapping(address => bool) public previousBlockSwappers;
+    mapping(address => bool) public setIntendToTradeNextBlock;
     mapping(address => bool) public setOfIntendToTradeSwapperSignalledInPreviousBlock;
 
-    event TokensSwapped(address indexed swapper, uint256 amountX, uint256 amountY, uint256 fee);
+    AggregatorV3Interface internal priceFeed;
 
-    constructor(uint256 _baseFee, uint256 _m, uint256 _n, uint256 _alpha, uint256 _cutOffPercentile, uint256 _L, uint256 _initialPrice) {
+    event BeforeSwap(address indexed pool, address indexed sender, uint256 amount0, uint256 amount1);
+    event Trade(uint256 x, uint256 y, uint256 fee);
+
+    constructor(
+        uint256 _price,
+        uint256 _L,
+        uint256 _baseFee,
+        uint256 _m,
+        uint256 _n,
+        uint256 _alpha,
+        uint256 _intentThreshold,
+        address _priceFeed
+    ) {
+        sqrtPrice = sqrt(_price);
+        L = _L;
         baseFee = _baseFee;
         m = _m;
         n = _n;
         alpha = _alpha;
-        cutOffPercentile = _cutOffPercentile;
-        L = _L;
-        sqrtPrice = sqrt(_initialPrice);
-        priceBeforePreviousBlock = _initialPrice;
-        priceAfterPreviousBlock = _initialPrice;
+        intentThreshold = _intentThreshold;
+        cutOffPercentile = 85;
         firstTransaction = true;
         totalBlocks = 0;
+        priceBeforePreviousBlock = _price.mul(995).div(1000);
+        priceAfterPreviousBlock = _price;
+        slippage = 0;
         currentBlockId = 0;
+        priceFeed = AggregatorV3Interface(_priceFeed);
     }
 
     function sqrt(uint256 x) internal pure returns (uint256) {
@@ -58,8 +83,8 @@ contract AMM is Ownable {
         if (blockId == 0) {
             return baseFee;
         }
-        uint256 priceImpact = abs(priceAfterPreviousBlock - priceBeforePreviousBlock).div(priceBeforePreviousBlock);
-        uint256 dynamicFee = baseFee.add(priceImpact.mul(1).div(100)); // Example: 1% of price impact
+        uint256 priceImpact = abs(priceAfterPreviousBlock.sub(priceBeforePreviousBlock)).mul(100).div(priceBeforePreviousBlock);
+        uint256 dynamicFee = baseFee.add(priceImpact.mul(1).div(100));
         return dynamicFee;
     }
 
@@ -76,7 +101,7 @@ contract AMM is Ownable {
         uint256 meanFee = mean(filteredFees);
         uint256 sigmaFee = std(filteredFees);
         uint256 dynamicFee;
-        if (previousBlockSwappers[swapperId]) {
+        if (swapperIntent[swapperId]) {
             dynamicFee = meanFee.add(m.mul(sigmaFee));
         } else {
             dynamicFee = n.mul(sigmaFee);
@@ -84,7 +109,7 @@ contract AMM is Ownable {
         return dynamicFee;
     }
 
-    function calculateCombinedFee(uint256 blockId, address swapperId) public returns (uint256) {
+    function calculateCombinedFee(uint256 blockId, address swapperId) public view returns (uint256) {
         uint256 combinedFee = alpha.mul(endogenousDynamicFee(blockId)).add((1 - alpha).mul(exogenousDynamicFee(swapperId)));
         combinedFee = max(combinedFee, endogenousDynamicFee(blockId));
         if (combinedFee <= baseFee.mul(125).div(100)) {
@@ -98,40 +123,18 @@ contract AMM is Ownable {
             firstTransaction = false;
         }
         if (setOfIntendToTradeSwapperSignalledInPreviousBlock[swapperId]) {
-            combinedFee = combinedFee.div(2);
+            combinedFee = combinedFee.mul(50).div(100);
         }
         return combinedFee;
     }
-
-    function buyXTokensForYTokens(uint256 newSqrtPrice, uint256 poolFeePlusOne) public returns (uint256, uint256, uint256) {
-        uint256 x = calculateAmountXTokensInvolvedInSwap(newSqrtPrice);
-        uint256 y = calculateAmountOfYTokensInvolvedInSwap(newSqrtPrice);
-        return (x, y.mul(poolFeePlusOne), y.mul(poolFeePlusOne.sub(1)));
-    }
-
-    function sellXTokensForYTokens(uint256 newSqrtPrice, uint256 poolFeePlusOne) public returns (uint256, uint256, uint256) {
-        uint256 x = calculateAmountXTokensInvolvedInSwap(newSqrtPrice);
-        uint256 y = calculateAmountOfYTokensInvolvedInSwap(newSqrtPrice);
-        return (x, y.mul(2).sub(poolFeePlusOne), y.sub(y.mul(2).sub(poolFeePlusOne)));
-    }
-
-    function calculateAmountXTokensInvolvedInSwap(uint256 newSqrtPrice) public view returns (uint256) {
-        uint256 priceXBeforeSwap = sqrtPrice.mul(sqrtPrice);
-        uint256 priceXAfterSwap = newSqrtPrice.mul(newSqrtPrice);
-        return (newSqrtPrice.sub(sqrtPrice)).mul(L).div(sqrtPrice.mul(newSqrtPrice));
-    }
-
-    function calculateAmountOfYTokensInvolvedInSwap(uint256 newSqrtPrice) public view returns (uint256) {
-        return (newSqrtPrice.sub(sqrtPrice)).mul(L);
-    }
-
-    function getBidAndAskOfAMM(uint256 currentAMMPrice) public view returns (uint256, uint256) {
-        uint256 bidPrice = currentAMMPrice.mul(2).sub(1).sub(baseFee);
-        uint256 askPrice = currentAMMPrice.mul(1).add(baseFee);
-        return (bidPrice, askPrice);
-    }
-
-    function tradeToPriceWithGasFee(uint256 efficientOffChainPrice, uint256 submittedFee, address swapperId, uint256 blockId, uint256 gas, bool informed) public returns (uint256, uint256, uint256) {
+    function tradeToPriceWithGasFee(
+        uint256 efficientOffChainPrice,
+        uint256 submittedFee,
+        address swapperId,
+        uint256 blockId,
+        uint256 gasCost,
+        bool informed
+    ) public returns (uint256, uint256, uint256) {
         if (currentBlockId == 0) {
             currentBlockId = blockId;
             beginBlock(blockId, efficientOffChainPrice);
@@ -141,25 +144,22 @@ contract AMM is Ownable {
             beginBlock(blockId, efficientOffChainPrice);
         }
 
-        uint256 poolFee;
         if (currentBlockId == 0) {
-            poolFee = 1 + baseFee;
+            poolFee = baseFee.add(1);
         } else {
             uint256 delta = calculateCombinedFee(blockId, swapperId).sub(baseFee);
-            poolFee = poolFee.add(delta);
+            poolFeeInMarketDirection = poolFee.add(delta);
+            poolFeeInOppositeDirection = poolFee.sub(delta);
         }
 
-        uint256 currentAMMPrice = sqrtPrice.mul(sqrtPrice);
-        (uint256 ammBidPrice, uint256 ammAskPrice) = getBidAndAskOfAMM(currentAMMPrice);
+        uint256 currentAmmPrice = sqrtPrice.mul(sqrtPrice);
+        (uint256 ammBidPrice, uint256 ammAskPrice) = getBidAndAskOfAmm(currentAmmPrice);
 
-        if (submittedFee < 0) {
-            revert("Submitted fee must be non-negative.");
-        } else if (submittedFee >= baseFee) {
-            revert("Submitted fee cannot exceed base fee.");
-        } else {
+        if (submittedFee != 0) {
+            require(submittedFee >= 0, "Submitted fee must be non-negative.");
+            require(submittedFee < baseFee, "Submitted fee cannot exceed base fee.");
             listSubmittedFees.push(submittedFee);
-            previousBlockSwappers[swapperId] = true;
-            setOfIntendToTradeSwapperSignalledInPreviousBlock[swapperId] = true;
+            setIntendToTradeNextBlock[swapperId] = true;
         }
 
         if (informed) {
@@ -171,76 +171,65 @@ contract AMM is Ownable {
         uint256 x;
         uint256 y;
         uint256 fee;
+        uint256 newSqrtPrice;
+
         if (ammAskPrice < efficientOffChainPrice) {
-            uint256 _fee = 1 + poolFee;
-            uint256 newSqrtPrice = sqrt(efficientOffChainPrice.div(_fee));
+            uint256 _fee = (orderBoolPressure > 0) ? poolFeeInMarketDirection.add(1) : (orderBoolPressure < 0) ? poolFeeInOppositeDirection.add(1) : baseFee.add(1);
+            newSqrtPrice = sqrt(efficientOffChainPrice.div(_fee));
             (x, y, fee) = buyXTokensForYTokens(newSqrtPrice, _fee);
         } else if (ammBidPrice > efficientOffChainPrice) {
-            uint256 _fee = 1 + poolFee;
-            uint256 newSqrtPrice = sqrt(efficientOffChainPrice.mul(2).sub(_fee));
+            uint256 _fee = (orderBoolPressure > 0) ? poolFeeInOppositeDirection.add(1) : (orderBoolPressure < 0) ? poolFeeInMarketDirection.add(1) : baseFee.add(1);
+            newSqrtPrice = sqrt(efficientOffChainPrice.mul(2).sub(_fee));
             (x, y, fee) = sellXTokensForYTokens(newSqrtPrice, _fee);
         }
 
-        if (gas > x.mul(efficientOffChainPrice).add(y)) {
-            revert("Gas cost cannot exceed the total value of the trade.");
+        if (gasCost > x.mul(efficientOffChainPrice).add(y)) {
+            return (0, 0, 0);
         } else {
-            sqrtPrice = sqrt(efficientOffChainPrice);
+            sqrtPrice = newSqrtPrice;
         }
 
-        emit TokensSwapped(swapperId, x, y, fee);
+        emit Trade(x, y, fee);
         return (x, y, fee);
     }
 
-    function beginBlock(uint256 blockId, uint256 efficientOffChainPrice) public {
-        // Mocking chain_link price feed from CEX
-        // Implement your logic here
+    function beforeSwap(
+        address sender,
+        IUniswapV4Pool pool,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external override {
+        emit BeforeSwap(address(pool), sender, amount0, amount1);
+        // Custom logic before the swap
+        (, int price, , , ) = priceFeed.latestRoundData();
+        orderBoolPressure = uint256(price);
     }
 
-    function endBlock() public {
-        listSubmittedFees = new uint256[](0);
-        for (uint256 i = 0; i < previousBlockSwappers.length; i++) {
-            delete previousBlockSwappers[i];
-        }
-        totalBlocks = totalBlocks.add(1);
-        firstTransaction = true;
-        for (uint256 i = 0; i < setOfIntendToTradeSwapperSignalledInPreviousBlock.length; i++) {
-            delete setOfIntendToTradeSwapperSignalledInPreviousBlock[i];
-        }
+    function afterSwap(
+        address sender,
+        IUniswapV4Pool pool,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external override {
+        // No-op for after swap
+    }
+
+    function sort(uint256[] memory data) internal pure returns (uint256[] memory) {
+        // Implement sorting logic
+    }
+
+    function mean(uint256[] memory data) internal pure returns (uint256) {
+        // Implement mean calculation
+    }
+
+    function std(uint256[] memory data) internal pure returns (uint256) {
+        // Implement standard deviation calculation
     }
 
     function abs(uint256 x) internal pure returns (uint256) {
         return x >= 0 ? x : -x;
-    }
-
-    function sort(uint256[] memory data) internal pure returns (uint256[] memory) {
-        uint256[] memory sortedData = data;
-        for (uint256 i = 0; i < sortedData.length; i++) {
-            for (uint256 j = i + 1; j < sortedData.length; j++) {
-                if (sortedData[i] > sortedData[j]) {
-                    uint256 temp = sortedData[i];
-                    sortedData[i] = sortedData[j];
-                    sortedData[j] = temp;
-                }
-            }
-        }
-        return sortedData;
-    }
-
-    function mean(uint256[] memory data) internal pure returns (uint256) {
-        uint256 sum = 0;
-        for (uint256 i = 0; i < data.length; i++) {
-            sum = sum.add(data[i]);
-        }
-        return sum.div(data.length);
-    }
-
-    function std(uint256[] memory data) internal pure returns (uint256) {
-        uint256 meanValue = mean(data);
-        uint256 variance = 0;
-        for (uint256 i = 0; i < data.length; i++) {
-            variance = variance.add((data[i].sub(meanValue)).mul(data[i].sub(meanValue)));
-        }
-        return sqrt(variance.div(data.length));
     }
 
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
