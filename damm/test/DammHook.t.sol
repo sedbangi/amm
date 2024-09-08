@@ -108,7 +108,9 @@ contract TestDammHook is Test, Deployers {
         // 1. Conduct a swap at gasprice = 10 gwei
         // This should just use `BASE_FEE` since the gas price is the same as the current average
         uint256 balanceOfToken1Before = currency1.balanceOfSelf();
+
         swapRouter.swap(key, params, testSettings, ZERO_BYTES);
+        
         uint256 balanceOfToken1After = currency1.balanceOfSelf();
         uint256 outputFromBaseFeeSwap = balanceOfToken1After -
             balanceOfToken1Before;
@@ -118,4 +120,6 @@ contract TestDammHook is Test, Deployers {
         console.log("Balance of token 1 before swap", balanceOfToken1Before);
         console.log("Here");
     }
+
+
 }

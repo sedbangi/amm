@@ -9,9 +9,10 @@ import {BalanceDeltaLibrary, BalanceDelta} from "v4-core/types/BalanceDelta.sol"
 import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapDelta.sol";
 
- import {DammOracle} from "../src/DammOracle.sol";
+import {DammOracle} from "../src/DammOracle.sol";
 import {DammHook} from "../src/DammHook.sol";
 import {console} from "forge-std/console.sol";
+
 
 contract DammHook is BaseHook {
 	// Use CurrencyLibrary and BalanceDeltaLibrary
@@ -28,8 +29,8 @@ contract DammHook is BaseHook {
     // Needed as the denominator to update it the next time based on the moving average formula
     uint104 public movingAverageGasPriceCount;
 
-	// Keeping track of user => referrer
-	mapping(address => address) public referredBy;
+	// Keeping track of informed traders
+	address[] public informedTraders;
 
 	// Amount of points someone gets for referring someone else
     uint256 public constant POINTS_FOR_REFERRAL = 500 * 10 ** 18;
@@ -39,7 +40,7 @@ contract DammHook is BaseHook {
 
     error MustUseDynamicFee();
 
-    mapping(address => uint256) public informedTraders;
+    mapping(address => uint256) public submittedDelta;
 
     // DammOracle dammOracle;
 
@@ -205,5 +206,11 @@ contract DammHook is BaseHook {
             (movingAverageGasPriceCount + 1);
 
         movingAverageGasPriceCount++;
+    }
+
+    function getHookData(
+        uint256 submittedFee
+    ) public pure returns (bytes memory) {
+        return abi.encode(submittedFee);
     }
 }
