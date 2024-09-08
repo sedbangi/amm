@@ -1,0 +1,31 @@
+@startuml AMM
+'skinparam defaultFontName Segoe UI
+
+title AMM
+
+==Block t-1==
+LT->POOL: swap(zeroForOne, amountSpecified)
+activate POOL
+
+group Block/Trx check [Block 0 - Genesis Block]
+POOL->POOL:setPoolFee(1+baseFee)
+
+else 1st trx in block for pool
+POOL<-Chainlink: getCurrentAskBidPriceSize()
+POOL->POOL: calculateOrderBookPressure()
+note right: OrderBookPressure valid for all trx in this block
+
+else any other trx in block for pool
+POOL->POOL: calculateCombinedFee()
+POOL->POOL: setPoolFeeInMarketDirection()
+POOL->POOL: setPoolFeeInOppositeDirection()
+
+else new block
+POOL->POOL:resetBlockId()
+end
+deactivate POOL
+
+
+==Block t==
+
+@enduml

@@ -35,7 +35,7 @@ foundryup
 
 #### Initialize a new foundry project
 ```
-forge init limit-orders
+forge init damm
 ```
 
 #### Install v4-periphery
