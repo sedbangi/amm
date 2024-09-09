@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-
 import {console} from "forge-std/console.sol";
 
 contract DammOracle {
@@ -22,7 +21,8 @@ contract DammOracle {
     function getOrderBookPressure() public view returns (uint256) {
         uint256 bidSize = random(1, 1000);
         console.logUint(bidSize);
-        // uint256 bidPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (1000 - HALF_SPREAD) / 1000;
+        uint256 bidPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (1000 - HALF_SPREAD) / 1000;
+        console.logUint((bidPrice));
         // uint256 askPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (1000 + HALF_SPREAD) / 1000;
         // uint256 askSize = random(1, 1000);
 
