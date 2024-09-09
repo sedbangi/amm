@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
+import "./MathLibrary.sol";
 
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
+    using MathLibrary for uint256;
     uint256[200] public priorityFees;
     uint256[200] public prices;
     uint256[200] public blockNumbers;
@@ -42,14 +44,5 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
 
     function getPriceVolatility() public view returns (uint256) {
         return calculateVolatility(prices);
-    }
-
-    function sqrt(uint256 x) internal pure returns (uint256 y) {
-        uint256 z = (x + 1) / 2;
-        y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
-        }
     }
 }
