@@ -38,9 +38,27 @@ contract DammHook is BaseHook {
     // The default base fees we will charge
     uint24 public constant BASE_FEE = 3000; // 0.3%
 
+    uint24 public constant CUT_OFF_PERCENTILE = 85;
+
+    // TODO change M to 0.5 similar to BASE_FEE handling
+    uint24 public constant M = 5000;
+    uint24 public constant N = 2;
+
     error MustUseDynamicFee();
 
-    mapping(address => uint256) public submittedDelta;
+    //Storage for submittedDeltaFees
+    mapping(address sender => uint256 inputAmount) public submittedDeltaFees;
+
+    // TODO reset for a new block - maybe a Trader struct
+    address[] senders;
+
+    // struct SubmittedDeltaFees {
+    //     uint256 blockNumber ;
+    //     address submitAddress;
+    // }
+    // uint public SubmittedDeltaFeesLength = 0;
+
+    // SubmittedDeltaFees[] submittedDeltaFees;
 
     // DammOracle dammOracle;
 
@@ -98,14 +116,14 @@ contract DammHook is BaseHook {
             )   external override
                 returns (bytes4, BeforeSwapDelta, uint24)
             {
-                uint256 submittedFee;
                 uint256 blockNumber = uint256(block.number);
                 int256 amountToSwap = params.amountSpecified;
                 uint256 poolFee;
 
                 uint24 fee = BASE_FEE;
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
-
+                
+                _storeSubmittedDeltaFee(sender, blockNumber, hookData);
                 poolManager.updateDynamicLPFee(key, fee);
                 console.log("Blocknumber: ", blockNumber);
 
@@ -168,6 +186,40 @@ contract DammHook is BaseHook {
             return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
+
+    function _storeSubmittedDeltaFee(
+        address sender,
+        uint256 blockNumber,
+        bytes calldata hookData
+    ) internal {
+        if (hookData.length == 0) return;
+
+        (uint256 submittedDeltaFee) = abi.decode(
+            hookData,
+            (uint256)
+        );
+        if (submittedDeltaFee == 0) return;
+
+        if (submittedDeltaFee != 0) {
+            require(submittedDeltaFee >= 0, "Submitted fee must be non-negative.");
+            require(submittedDeltaFee < BASE_FEE, "Submitted fee cannot exceed base fee.");
+
+            if (submittedDeltaFees[sender] != 0) {
+                uint256 oldSubmittedDeltaFee = submittedDeltaFees[sender];
+                uint256 maxSubmittedDeltaFee = max(oldSubmittedDeltaFee, submittedDeltaFee);
+                submittedDeltaFees[sender] = maxSubmittedDeltaFee;
+                console.log("maxSubmittedDeltaFee: ", maxSubmittedDeltaFee);
+            } else {
+                senders.push(sender);
+                submittedDeltaFees[sender] = submittedDeltaFee;
+                console.log("submittedDeltaFee: ", submittedDeltaFee);
+            }
+
+            // TODO include intent to trade next block
+            // setIntendToTradeNextBlock[swapperId] = true;
+        }
+    }
+
     function afterSwap(
         address,
         PoolKey calldata,
@@ -179,7 +231,7 @@ contract DammHook is BaseHook {
         return (this.afterSwap.selector, 0);
     }
 
-
+    // TODO OLD get fee function from sample
     function getFee() internal view returns (uint24) {
         uint128 gasPrice = uint128(tx.gasprice);
 
@@ -196,6 +248,7 @@ contract DammHook is BaseHook {
         return BASE_FEE;
     }
 
+    // TODO OLD moving average function from sample
     // Update our moving average gas price
     function updateMovingAverage() internal {
         uint128 gasPrice = uint128(tx.gasprice);
@@ -209,8 +262,84 @@ contract DammHook is BaseHook {
     }
 
     function getHookData(
-        uint256 submittedFee
+        uint256 submittedDeltaFee
     ) public pure returns (bytes memory) {
-        return abi.encode(submittedFee);
+        return abi.encode(submittedDeltaFee);
+    }
+
+    function getSubmittedDeltaFeesForBlockByAddress(
+        address sender
+    ) public view returns (uint256 submittedDeltaFee) {
+        return submittedDeltaFees[sender];
+    }
+
+    function getSubmittedDeltaFeeForBlock() public view returns (uint256) {
+        uint256 numberSenders = senders.length;
+        if (numberSenders < 2) {
+            return BASE_FEE;
+        }
+
+        uint[] memory sortedDeltaFees = new uint[](numberSenders);
+
+        for (uint256 i = 0; i < senders.length; i++) {
+            sortedDeltaFees[i] = submittedDeltaFees[senders[i]];
+        }
+
+        sort(sortedDeltaFees);
+
+        uint256 cutoffIndex = (numberSenders * CUT_OFF_PERCENTILE) / 100;
+        uint256[] memory filteredFees = new uint256[](cutoffIndex);
+        for (uint256 i = 0; i < cutoffIndex; i++) {
+            filteredFees[i] = sortedDeltaFees[i];
+        }
+        
+        uint256 sigmaFee = std(filteredFees);
+        uint256 calculatedDeltaFeeForBlock = N * sigmaFee;
+
+        // TODO include intent to trade next block
+        // if (swapperIntent[swapperId]) {
+        //     uint256 meanFee = mean(filteredFees);
+        //     calculatedDeltaFeeForBlock = meanFee.add(m.mul(sigmaFee));
+        // } else {
+        //     calculatedDeltaFeeForBlock = n.mul(sigmaFee);
+        // }
+
+        return calculatedDeltaFeeForBlock;
+    }
+
+    // very costly - maybe offchain calculation necessary
+    function std(uint256[] memory data) internal pure returns (uint256) {
+        // Implement standard deviation calculation
+    }
+
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
+
+    // very costly - maybe offchain calculation necessary
+    function sort(uint[] memory arr) public pure {
+        if (arr.length > 0)
+            quickSort(arr, 0, arr.length - 1);
+    }
+
+    function quickSort(uint[] memory arr, uint left, uint right) public pure {
+        if (left >= right)
+            return;
+        uint p = arr[(left + right) / 2];   // p = the pivot element
+        uint i = left;
+        uint j = right;
+        while (i < j) {
+            while (arr[i] < p) ++i;
+            while (arr[j] > p) --j;         // arr[j] > p means p still to the left, so j > 0
+            if (arr[i] > arr[j])
+                (arr[i], arr[j]) = (arr[j], arr[i]);
+            else
+                ++i;
+        }
+
+        // Note --j was only done when a[j] > p.  So we know: a[j] == p, a[<j] <= p, a[>j] > p
+        if (j > left)
+            quickSort(arr, left, j - 1);    // j > left, so j > 0
+        quickSort(arr, j + 1, right);
     }
 }

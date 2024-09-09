@@ -40,7 +40,7 @@ forge init damm
 
 #### Install v4-periphery
 ```
-cd limit-orders
+cd damm
 forge install Uniswap/v4-periphery
 ```
 
