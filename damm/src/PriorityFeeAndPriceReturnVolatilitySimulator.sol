@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
-import "./MathLibrary.sol";
+import {MathLibrary} from "../src/MathLibrary.sol";
+import {console} from "forge-std/console.sol";
 
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
-    using MathLibrary for uint256;
     uint constant historicalBlocks = 200;
     uint256[historicalBlocks] public priorityFees;
     uint256[historicalBlocks] public prices;
     uint256[historicalBlocks] public blockNumbers;
     uint256 public index;
+    using MathLibrary for uint256;
 
     constructor() {
         index = 0;
