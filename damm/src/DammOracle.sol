@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {console} from "forge-std/console.sol";
-import {FullMath} from "lib/v4-periphery/lib/v4-core/src/libraries/FullMath.sol";
 
 contract DammOracle {
     uint256 public OFF_CHAIN_MID_PRICE_ETH_USDT = 2200;
