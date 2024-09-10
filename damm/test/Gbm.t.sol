@@ -12,23 +12,23 @@ contract TestGeometricBrownianMotion is Test {
         uint256 initialPrice = 1000;
         uint256 dailyStd = 5;
         uint256 blocksPerDay = 5760; // Assuming 15 seconds per block
-        uint256 days = 10;
-        gbm = new GeometricBrownianMotion(initialPrice, dailyStd, blocksPerDay, days);
+        uint256 numberDays = 1;
+        gbm = new GeometricBrownianMotion(initialPrice, dailyStd, blocksPerDay, numberDays);
     }
 
     function testGeneratePricePath() public {
         uint256[] memory prices = gbm.generatePricePath();
 
         // Log the prices for inspection
-        for (uint256 i = 0; i < prices.length; i++) {
-            console.log("Price at block %d: %d", i, prices[i]);
+        for (uint256 k = 0; k < prices.length; k++) {
+            console.log("Price at block %d: %d", k, prices[k]);
         }
 
         // Basic assertions to ensure the function works as expected
-        assertEq(prices.length, gbm.days() * gbm.blocksPerDay());
+        assertEq(prices.length, gbm.numberDays() * gbm.blocksPerDay());
         assertGt(prices[0], 0);
-        for (uint256 i = 1; i < prices.length; i++) {
-            assertGt(prices[i], 0);
+        for (uint256 k = 1; k < prices.length; k++) {
+            assertGt(prices[k], 0);
         }
     }
 }

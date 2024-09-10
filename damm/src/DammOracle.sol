@@ -58,6 +58,6 @@ contract DammOracle {
     }
 
     function random(uint256 min, uint256 max) internal view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % (max - min + 1) + min;
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % (max - min + 1) + min;
     }
 }
