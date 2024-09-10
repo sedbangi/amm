@@ -1,28 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import "forge-std/Test.sol";
 import "../src/Gbm.sol";
-import {console} from "forge-std/console.sol";
 
-contract TestGeometricBrownianMotion {
+contract TestGeometricBrownianMotion is Test {
     GeometricBrownianMotion public gbm;
 
-    constructor() {
+    function setUp() public {
         // Initialize the GeometricBrownianMotion contract with example parameters
-        gbm = new GeometricBrownianMotion(1000, 5, 2, 365, 10);
+        uint256 initialPrice = 1000;
+        uint256 dailyStd = 5;
+        uint256 blocksPerDay = 5760; // Assuming 15 seconds per block
+        uint256 days = 10;
+        gbm = new GeometricBrownianMotion(initialPrice, dailyStd, blocksPerDay, days);
     }
 
-    function testGenerateGBM() public {
-        // Generate the GBM path
-        gbm.generateGBM();
+    function testGeneratePricePath() public {
+        uint256[] memory prices = gbm.generatePricePath();
 
-        // Retrieve and display the prices
-        uint256[] memory prices = gbm.getPrices();
-        for (uint256 k = 0; k < prices.length; k++) {
-            console.log("Price at time %d: %d", k, prices[k]);
-            if (k > 0) {
-                assert(prices[k] != prices[k - 1]);
-            }
+        // Log the prices for inspection
+        for (uint256 i = 0; i < prices.length; i++) {
+            console.log("Price at block %d: %d", i, prices[i]);
+        }
+
+        // Basic assertions to ensure the function works as expected
+        assertEq(prices.length, gbm.days() * gbm.blocksPerDay());
+        assertGt(prices[0], 0);
+        for (uint256 i = 1; i < prices.length; i++) {
+            assertGt(prices[i], 0);
         }
     }
 }

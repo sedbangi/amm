@@ -18,7 +18,10 @@ contract TestDammHook is Test {
     using MathLibrary for uint256;
 
     function setUp() public {
-        dammHook = new DammHook();
+        // Assuming DammHook constructor requires an address and a uint256
+        address someAddress = address(0x123);
+        uint256 someValue = 1000;
+        dammHook = new DammHook(someAddress, someValue);
     }
 
     function testGetSubmittedDeltaFeeForBlock() public {

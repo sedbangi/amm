@@ -3,38 +3,49 @@ pragma solidity 0.8.26;
 
 import {MathLibrary} from "../src/MathLibrary.sol";
 import {console} from "forge-std/console.sol";
+import "../node_modules/@openzeppelin/contracts/utils/math/Math.sol";
 
 contract GeometricBrownianMotion {
-    uint256 public S0;
-    uint256 public mu;
-    uint256 public sigma;
-    uint256 public T;
-    uint256 public n;
-    uint256[] public prices;
+    using SafeMath for uint256;
+    using SafeMath for int256;
     using MathLibrary for uint256;
 
-    constructor(uint256 _S0, uint256 _mu, uint256 _sigma, uint256 _T, uint256 _n) {
-        S0 = _S0;
-        mu = _mu;
-        sigma = _sigma;
-        T = _T;
-        n = _n;
-        prices = new uint256[](_n + 1);
-        prices[0] = _S0;
+    uint256 public initialPrice;
+    uint256 public dailyStd;
+    uint256 public blocksPerDay;
+    uint256 public days;
+    uint256[] public prices;
+    
+    constructor(uint256 _initialPrice, uint256 _dailyStd, uint256 _blocksPerDay, uint256 _days) {
+        initialPrice = _initialPrice;
+        dailyStd = _dailyStd;
+        blocksPerDay = _blocksPerDay;
+        days = _days;
     }
 
-    function generateGBM() public {
-        uint256 dt = T / n;
-        uint256 drift = mu - (sigma ** 2) / 2;
-        for (uint256 i = 1; i <= n; i++) {
-            uint256 randomShock = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i))) % 100;
-            uint256 diffusion = sigma * randomShock;
-            prices[i] = prices[i - 1] * (1 + drift * dt + diffusion * dt.sqrt());
-            console.log("Price at time %d: %d", i, prices[i]);
+    function generatePricePath() public view returns (uint256[] memory) {
+        uint256 p0 = initialPrice;
+        uint256 sigma = dailyStd.div(sqrt(blocksPerDay));
+        uint256 totalNumberOfBlocks = days.mul(blocksPerDay);
+        int256[] memory z = new int256[](totalNumberOfBlocks);
+        uint256[] memory prices = new uint256[](totalNumberOfBlocks);
+
+        // Generate random normal values (simplified)
+        for (uint256 k = 0; k < totalNumberOfBlocks; k++) {
+            z[k] = int256(randomNormal(0, sigma));
         }
-    }
 
-    function getPrices() public view returns (uint256[] memory) {
+        // Cumulative sum
+        for (uint256 k = 1; k < totalNumberOfBlocks; k++) {
+            z[k] = z[k - 1] + z[k];
+        }
+
+        // Calculate prices
+        for (uint256 k = 0; k < totalNumberOfBlocks; k++) {
+            int256 drift = int256(k.mul(sigma).mul(sigma).div(2));
+            prices[k] = uint256(exp(z[k] - drift)).mul(p0).div(exp(z[0]));
+            console.log("Price at time %d: %d", k, prices[k]);
+        }
         return prices;
     }
 }
