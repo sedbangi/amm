@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
-import "../src/QuantizeFee.sol";
+import "../src/FeeQuantizer.sol";
 
 contract TestFeeQuantizer is Test {
     FeeQuantizer public feeQuantizer;

@@ -6,14 +6,7 @@ contract FeeQuantizer {
 
     function snapFee(uint256 fee) public {
         require(fee <= 2000, "Fee must be between 0 and 20%");
-        
-        // Snap the fee to the nearest 0.5%
-        uint256 remainder = fee % 50;
-        if (remainder >= 25) {
-            quantizedFee = fee + (50 - remainder);
-        } else {
-            quantizedFee = fee - remainder;
-        }
+        quantizedFee = (fee / 50) * 50;
     }
 
     function getquantizedFee() public view returns (uint256) {

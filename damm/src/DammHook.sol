@@ -308,6 +308,7 @@ contract DammHook is BaseHook {
     }
 
     // very costly - maybe offchain calculation necessary
+    // NOTE: @Roman, can we use the the MathLibrary.sqrt() function here?
     function std(uint256[] memory data) internal pure returns (uint256) {
         // Implement standard deviation calculation
     }
