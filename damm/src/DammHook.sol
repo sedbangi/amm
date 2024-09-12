@@ -130,6 +130,8 @@ contract DammHook is BaseHook {
                 uint256 poolFee;
 
                 uint24 fee = BASE_FEE;
+                uint24 INTERIM_FEE = BASE_FEE;
+
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
                 console.log("beforeSwap | ", BaseHook.beforeModifyPosition.selector);
                 
@@ -141,10 +143,20 @@ contract DammHook is BaseHook {
                 uint256 priorityFee = getPriorityFee(params);
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
+                
+                // Fetch order book pressure from DammOracle
+                int256 orderBookPressure = dammOracle.getOrderBookPressure();
+
+                // Adjust the fee based on order book pressure
+                // ToDo: USE BUY OR SEll 
+                if (orderBookPressure > 0) {
+                    INTERIM_FEE = BASE_FEE + uint24(DammHookHelper.calculateCombinedFee(blockNumber, sender));
+                } else {
+                    INTERIM_FEE = BASE_FEE - uint24(DammHookHelper.calculateCombinedFee(blockNumber, sender));                
+                }
                 // Update the dynamic LP fee
                 uint24 finalPoolFee = 
-                    mevFlag ? BASE_FEE * 10: uint24(
-                        DammHookHelper.calculateCombinedFee(blockNumber, sender));
+                    mevFlag ? BASE_FEE * 10: uint24(INTERIM_FEE);
 
                 poolManager.updateDynamicLPFee(key, finalPoolFee);
                 // poolManager.updateDynamicLPFee(key, fee);
