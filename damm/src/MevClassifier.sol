@@ -40,7 +40,7 @@ contract MevClassifier {
 
     function classifyTransaction(uint256 priorityFee) external view returns (bool) {
         uint256 priceVolatility = dammOracle.getPriceVolatility();
-        uint256 feeVolatility = dammOracle.getFeeVolatility();
+        uint256 feeVolatility = dammOracle.getPriorityFeeVolatility();
 
         // Implement the MEV classification logic based on volatilities
         return (priorityFee > feeVolatility) && (priceVolatility > mSigma);

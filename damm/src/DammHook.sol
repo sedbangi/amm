@@ -134,7 +134,8 @@ contract DammHook is BaseHook {
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
                 // Adjust fee based on MEV classification
-                bool mevFlag = mevClassifier.classifyTransaction(params.priorityFee)
+                uint256 priorityFee = getPriorityFee(params);
+                bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
                 // Update the dynamic LP fee
                 uint256 finalPoolFee = mevFlag ? BASE_FEE * 10: BASE_FEE;
@@ -198,9 +199,14 @@ contract DammHook is BaseHook {
             // }
 
             // emit TokensSwapped(swapperId, x, y, fee);
-            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalFee);
+            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalPoolFee);
     }
 
+    function getPriorityFee(IPoolManager.SwapParams calldata params) internal pure returns (uint256) {
+        // Implement logic to retrieve priorityFee from params
+        // Placeholder implementation, replace with actual logic
+        return 0;
+    }
 
     function _storeSubmittedDeltaFee(
         address sender,

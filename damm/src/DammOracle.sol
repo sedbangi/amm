@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 import {console} from "forge-std/console.sol";
-import {PriorityFeeAndPriceReturnVolatilitySimulator} from "damm/src/PriorityFeeAndPriceReturnVolatilitySimulator.sol";
-import {MevClassifier} from "damm/src/MevClassifier.sol";
+import {PriorityFeeAndPriceReturnVolatilitySimulator} from "../src/PriorityFeeAndPriceReturnVolatilitySimulator.sol";
+import {MevClassifier} from "../src/MevClassifier.sol";
 
 contract DammOracle {
     uint256 public OFF_CHAIN_MID_PRICE_ETH_USDT = 2200;
@@ -12,11 +12,11 @@ contract DammOracle {
     uint256 constant SCALING_FACTOR = 10**18;
     uint256 public SqrtX96Price;
     
-    PriorityFeeAndPriceReturnVolatility public volatilityCalculator;
+    PriorityFeeAndPriceReturnVolatilitySimulator public volatilityCalculator;
     MevClassifier public mevClassifier;
 
     constructor(address _volatilityCalculator, address _mevClassifier) {
-        volatilityCalculator = PriorityFeeAndPriceReturnVolatility(_volatilityCalculator);
+        volatilityCalculator = PriorityFeeAndPriceReturnVolatilitySimulator(_volatilityCalculator);
         mevClassifier = MevClassifier(_mevClassifier);
     }
 
@@ -62,11 +62,11 @@ contract DammOracle {
 
         // uint256 bidValue = bidSize * bidPrice;
         // uint256 askValue = askSize * askPrice;f
-        // return (askValue - bidValue) * 1000 / (askValue + bidValue);
-        return 5000;
+        return (askSize * askPrice - bidSize * bidPrice) / (askSize * askPrice + bidSize * bidPrice);
+        // return 5000;
     }
 
-    function getPriceReturnVolatility() public view returns (uint256) {
+    function getPriceVolatility() public view returns (uint256) {
         return volatilityCalculator.getPriceVolatility();
     }
 
