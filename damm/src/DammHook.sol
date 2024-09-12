@@ -56,6 +56,11 @@ contract DammHook is BaseHook {
     // TODO reset for a new block - maybe a Trader struct
     address[] senders;
 
+    struct NewHookData {
+        address sender;
+        bytes hookData;
+    }
+
     // struct SubmittedDeltaFees {
     //     uint256 blockNumber ;
     //     address submitAddress;
@@ -133,9 +138,15 @@ contract DammHook is BaseHook {
                 uint24 INTERIM_FEE = BASE_FEE;
 
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
-                console.log("beforeSwap | ", BaseHook.beforeModifyPosition.selector);
+
+                NewHookData memory data = abi.decode(hookData, (NewHookData));
+                address sender_address = data.sender;
+
+                uint256 submittedDeltaFee = abi.decode(data.hookData, (uint256));
+
+                console.log("beforeSwap | ", data.sender);
                 
-                _storeSubmittedDeltaFee(sender, blockNumber, hookData);
+                _storeSubmittedDeltaFee(sender, blockNumber, submittedDeltaFee);
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
@@ -230,14 +241,8 @@ contract DammHook is BaseHook {
     function _storeSubmittedDeltaFee(
         address sender,
         uint256 blockNumber,
-        bytes calldata hookData
+        uint256 submittedDeltaFee
     ) internal {
-        if (hookData.length == 0) return;
-
-        (uint256 submittedDeltaFee) = abi.decode(
-            hookData,
-            (uint256)
-        );
         if (submittedDeltaFee == 0) return;
 
         if (submittedDeltaFee != 0) {
