@@ -37,9 +37,6 @@ contract DammOracle {
     }
     */
 
-    /**
-     * Returns the simulated orderbookpressure
-     */
     function getOrderBookPressure() public view returns (uint256) {
         uint256 bidSize = random(1, 1000);
         // console.logUint("bid size");
@@ -75,4 +72,17 @@ contract DammOracle {
     function random(uint256 min, uint256 max) internal view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % (max - min + 1) + min;
     }
+
+    // function getPrices(uint256 blockId) external view returns (uint256 priceBeforePreviousBlock, 
+    //                                                            uint256 priceAfterPreviousBlock) {
+    //     // Simulate fetching two consecutive prices from Gbm
+    //     // uint256 priceVolatility = getPriceVolatility(); 
+    //     uint256 priceVolatility = 0.1 / sqrt(86400/13);
+    //     uint256 basePrice = 1000; // Example base price
+    //     // Simulate price before the previous block
+    //     priceBeforePreviousBlock = basePrice + random(0, priceVolatility);
+    //     // Simulate price after the previous block
+    //     priceAfterPreviousBlock = basePrice + random(0, priceVolatility);
+    //     return (priceBeforePreviousBlock, priceAfterPreviousBlock);
+    // }
 }
