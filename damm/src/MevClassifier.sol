@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "./PriorityFeeSimulation.sol";
+import "./DammOracle.sol";
 
 contract MevClassifier {
-    PriorityFeeSimulation public feeSimulator;
+    DammOracle public dammOracle;
     uint256 public K;
     uint256 public mSigma;
     uint256 public nSigma;
@@ -12,8 +12,8 @@ contract MevClassifier {
     uint256 public totalReturns;
     uint256 public totalSquaredReturns;
 
-    constructor(address _feeSimulator, uint256 _K, uint256 _mSigma, uint256 _nSigma) {
-        feeSimulator = PriorityFeeSimulation(_feeSimulator);
+    constructor(address _dammOracle, uint256 _K, uint256 _mSigma, uint256 _nSigma) {
+        dammOracle = DammOracle(_dammOracle);
         K = _K;
         mSigma = _mSigma;
         nSigma = _nSigma;
@@ -38,41 +38,20 @@ contract MevClassifier {
         tokenPrices.push(price);
     }
 
-    function classifyTransaction(uint256 fee) public view returns (string memory) {
-        uint256 nSigmaFee = feeSimulator.getNSigmaFee();
-        if (fee > nSigmaFee) {
-            return "MEV";
-        }
+    function classifyTransaction(uint256 priorityFee) external view returns (bool) {
+        uint256 priceVolatility = dammOracle.getPriceVolatility();
+        uint256 feeVolatility = dammOracle.getFeeVolatility();
 
-        uint256 meanReturn = totalReturns / tokenPrices.length;
-        uint256 varianceReturn = (totalSquaredReturns / tokenPrices.length) - (meanReturn * meanReturn);
-        uint256 stddevReturn = sqrt(varianceReturn);
-
-        uint256 mSigmaReturn = meanReturn + (mSigma * stddevReturn);
-        uint256 nSigmaReturn = meanReturn + (nSigma * stddevReturn);
-
-        if (mSigmaReturn > nSigmaReturn) {
-            return "MEV";
-        }
-
-        return "Non-MEV";
+        // Implement the MEV classification logic based on volatilities
+        return (priorityFee > feeVolatility) && (priceVolatility > mSigma);
     }
 
-    function removeFirstElement(uint256[] memory array) internal pure returns (uint256[] memory) {
-        uint256[] memory newArray = new uint256[](array.length - 1);
-        for (uint256 i = 1; i < array.length; i++) {
-            newArray[i - 1] = array[i];
+    function removeFirstElement(uint256[] storage array) internal returns (uint256[] storage) {
+        if (array.length == 0) return array;
+        for (uint256 i = 0; i < array.length - 1; i++) {
+            array[i] = array[i + 1];
         }
-        return newArray;
-    }
-
-    function sqrt(uint256 x) internal pure returns (uint256) {
-        uint256 z = (x + 1) / 2;
-        uint256 y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
-        }
-        return y;
+        array.pop();
+        return array;
     }
 }
