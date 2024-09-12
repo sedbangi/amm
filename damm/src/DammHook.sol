@@ -138,7 +138,7 @@ contract DammHook is BaseHook {
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
                 // Update the dynamic LP fee
-                uint256 finalPoolFee = mevFlag ? BASE_FEE * 10: BASE_FEE;
+                uint24 finalPoolFee = mevFlag ? BASE_FEE * 10: BASE_FEE;
                 poolManager.updateDynamicLPFee(key, finalPoolFee);
                 // poolManager.updateDynamicLPFee(key, fee);
                 console.log("Blocknumber: ", blockNumber);
