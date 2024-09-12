@@ -18,7 +18,7 @@ contract DynamicFeeTest is Test {
 
     function setUp() public {
         quantizeFee = new FeeQuantizer();
-        dammHook = new DammHook(address(quantizeFee));
+        dammHook = new DammHook();
 
         // Initialize mock data
         senders.push(address(0x1));

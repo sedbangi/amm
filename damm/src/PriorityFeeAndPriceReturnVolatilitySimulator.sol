@@ -8,12 +8,13 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256[] public blockNumbers;
     uint256 public index;
 
-    constructor(uint256 _historicalBlocks) {
-        historicalBlocks = _historicalBlocks;
-        priorityFees = new uint256[](_historicalBlocks);
-        prices = new uint256[](_historicalBlocks);
-        blockNumbers = new uint256[](_historicalBlocks);
-        index = 0;
+    constructor() {
+        // include GBM to create hist blocks
+        // historicalBlocks = _historicalBlocks;
+        // priorityFees = new uint256[](_historicalBlocks);
+        // prices = new uint256[](_historicalBlocks);
+        // blockNumbers = new uint256[](_historicalBlocks);
+        // index = 0;
     }
 
     function recordData(uint256 priorityFee, uint256 price) public {

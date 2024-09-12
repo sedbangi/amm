@@ -68,9 +68,11 @@ contract DammHook is BaseHook {
 
     // Initialize BaseHook parent contract in the constructor
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
-        dammOracle = new DammOracle();
         feeQuantizer = new FeeQuantizer();
         mevClassifier = new MevClassifier(address(feeQuantizer), 5, 1, 2);
+        dammOracle = new DammOracle();
+
+        //TODO clean up
         updateMovingAverage();
     }
 
@@ -128,6 +130,7 @@ contract DammHook is BaseHook {
 
                 uint24 fee = BASE_FEE;
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
+                console.log("beforeSwap | ", BaseHook.beforeModifyPosition.selector);
                 
                 _storeSubmittedDeltaFee(sender, blockNumber, hookData);
                 // Quantize the fee

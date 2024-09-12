@@ -13,11 +13,9 @@ contract DammOracle {
     uint256 public SqrtX96Price;
     
     PriorityFeeAndPriceReturnVolatilitySimulator public volatilityCalculator;
-    MevClassifier public mevClassifier;
 
-    constructor(address _volatilityCalculator, address _mevClassifier) {
-        volatilityCalculator = PriorityFeeAndPriceReturnVolatilitySimulator(_volatilityCalculator);
-        mevClassifier = MevClassifier(_mevClassifier);
+    constructor() {
+        volatilityCalculator = new PriorityFeeAndPriceReturnVolatilitySimulator();
     }
 
     /**
@@ -45,16 +43,16 @@ contract DammOracle {
     function getOrderBookPressure() public view returns (uint256) {
         uint256 bidSize = random(1, 1000);
         // console.logUint("bid size");
-        console.log("bid size:", bidSize);
+        console.log("getOrderBookPressure | bid size:", bidSize);
         uint256 bidPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (HUNDRED_PERCENT - HALF_SPREAD) / HUNDRED_PERCENT;
         // console.logUint("bid price");
-        console.log("bid price:", bidPrice);
+        console.log("getOrderBookPressure | bid price:", bidPrice);
         uint256 askPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (HUNDRED_PERCENT + HALF_SPREAD) / HUNDRED_PERCENT;
         // console.logUint("ask price");
-        console.log("ask price:", askPrice);
+        console.log("getOrderBookPressure | ask price:", askPrice);
         uint256 askSize = random(1, 1000);
         // console.logUint("ask size");
-        console.log("ask size:", askSize);
+        console.log("getOrderBookPressure | ask size:", askSize);
 
         // while (askSize == bidSize) {
         //     askSize = random(1, 1000);
