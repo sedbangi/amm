@@ -12,6 +12,8 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapD
 import {DammOracle} from "../src/DammOracle.sol";
 import {DammHook} from "../src/DammHook.sol";
 import {console} from "forge-std/console.sol";
+import {FeeQuantizer} from "../src/FeeQuantizer.sol";
+import {MevClassifier} from "../src/MevClassifier.sol";
 
 
 contract DammHook is BaseHook {
@@ -21,6 +23,8 @@ contract DammHook is BaseHook {
     using BalanceDeltaLibrary for BalanceDelta;
     using LPFeeLibrary for uint24;
 
+    FeeQuantizer feeQuantizer;
+    MevClassifier mevClassifier;
     DammOracle dammOracle;
 
     // Keeping track of the moving average gas price
@@ -65,6 +69,8 @@ contract DammHook is BaseHook {
     // Initialize BaseHook parent contract in the constructor
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         dammOracle = new DammOracle();
+        feeQuantizer = new FeeQuantizer();
+        mevClassifier = new MevClassifier(address(feeQuantizer), 5, 1, 2);
         updateMovingAverage();
     }
 
@@ -124,7 +130,16 @@ contract DammHook is BaseHook {
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
                 
                 _storeSubmittedDeltaFee(sender, blockNumber, hookData);
-                poolManager.updateDynamicLPFee(key, fee);
+                // Quantize the fee
+                uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
+
+                // Adjust fee based on MEV classification
+                bool mevFlag = mevClassifier.classifyTransaction(params.priorityFee)
+
+                // Update the dynamic LP fee
+                uint256 finalPoolFee = mevFlag ? BASE_FEE * 10: BASE_FEE;
+                poolManager.updateDynamicLPFee(key, finalPoolFee);
+                // poolManager.updateDynamicLPFee(key, fee);
                 console.log("Blocknumber: ", blockNumber);
 
 
@@ -183,7 +198,7 @@ contract DammHook is BaseHook {
             // }
 
             // emit TokensSwapped(swapperId, x, y, fee);
-            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalFee);
     }
 
 
