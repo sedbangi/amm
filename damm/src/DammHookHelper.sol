@@ -72,7 +72,7 @@ contract DammHookHelper {
         return dynamicFee;
     }
 
-    function calculateCombinedFee(uint256 blockId, address swapperId) internal returns (uint256) {
+    function calculateCombinedFee(uint256 blockId, address swapperId) external returns (uint256) {
         uint256 combinedFee = alpha * endogenousDynamicFee(blockId) + (100 - alpha) * exogenousDynamicFee(swapperId) / 100;
         combinedFee = combinedFee > endogenousDynamicFee(blockId) ? combinedFee : endogenousDynamicFee(blockId);
         if (combinedFee <= baseFee * 125 / 100) {

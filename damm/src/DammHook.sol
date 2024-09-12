@@ -26,6 +26,7 @@ contract DammHook is BaseHook {
     FeeQuantizer feeQuantizer;
     MevClassifier mevClassifier;
     DammOracle dammOracle;
+    DammHookHelper dammHookHelper;
 
     // Keeping track of the moving average gas price
     uint128 public movingAverageGasPrice;
@@ -57,8 +58,8 @@ contract DammHook is BaseHook {
     address[] senders;
 
     struct NewHookData {
-        address sender;
         bytes hookData;
+        address sender;
     }
 
     // struct SubmittedDeltaFees {
@@ -76,7 +77,7 @@ contract DammHook is BaseHook {
         feeQuantizer = new FeeQuantizer();
         mevClassifier = new MevClassifier(address(feeQuantizer), 5, 1, 2);
         dammOracle = new DammOracle();
-        DammHookHelper = new DammHookHelper(address(dammOracle));
+        dammHookHelper = new DammHookHelper(address(dammOracle));
 
         //TODO clean up
         updateMovingAverage();
@@ -139,14 +140,17 @@ contract DammHook is BaseHook {
 
                 uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
 
+
                 NewHookData memory data = abi.decode(hookData, (NewHookData));
                 address sender_address = data.sender;
 
-                uint256 submittedDeltaFee = abi.decode(data.hookData, (uint256));
+                uint256 submittedDeltaFee = 0;
 
-                console.log("beforeSwap | ", data.sender);
+                if (data.hookData.length > 0) {
+                    submittedDeltaFee = abi.decode(data.hookData, (uint256));
+                }
                 
-                _storeSubmittedDeltaFee(sender, blockNumber, submittedDeltaFee);
+                _storeSubmittedDeltaFee(sender_address, blockNumber, submittedDeltaFee);
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
@@ -156,15 +160,20 @@ contract DammHook is BaseHook {
 
                 
                 // Fetch order book pressure from DammOracle
-                int256 orderBookPressure = dammOracle.getOrderBookPressure();
+                uint256 orderBookPressure = dammOracle.getOrderBookPressure();
 
                 // Adjust the fee based on order book pressure
                 // ToDo: USE BUY OR SEll 
-                if (orderBookPressure > 0) {
-                    INTERIM_FEE = BASE_FEE + uint24(DammHookHelper.calculateCombinedFee(blockNumber, sender));
-                } else {
-                    INTERIM_FEE = BASE_FEE - uint24(DammHookHelper.calculateCombinedFee(blockNumber, sender));                
+                if (orderBookPressure > 0 && !params.zeroForOne) {
+                    INTERIM_FEE = BASE_FEE + uint24(dammHookHelper.calculateCombinedFee(blockNumber, sender_address));
+                } else if (orderBookPressure < 0 && !params.zeroForOne) {
+                    INTERIM_FEE = BASE_FEE - uint24(dammHookHelper.calculateCombinedFee(blockNumber, sender_address));                
+                } else if (orderBookPressure > 0 && params.zeroForOne) {
+                    INTERIM_FEE = BASE_FEE - uint24(dammHookHelper.calculateCombinedFee(blockNumber, sender_address));                
+                } else if (orderBookPressure < 0 && params.zeroForOne) {
+                    INTERIM_FEE = BASE_FEE + uint24(dammHookHelper.calculateCombinedFee(blockNumber, sender_address));                
                 }
+
                 // Update the dynamic LP fee
                 uint24 finalPoolFee = 
                     mevFlag ? BASE_FEE * 10: uint24(INTERIM_FEE);

@@ -153,14 +153,14 @@ contract TestDammHook is Test, Deployers {
         console.log("testBeforeSwap | --- PRANK STOPPED FOR ADDRESS", address(swapper0));
 
         submittedDeltaFee = 2000;
-        hookData = hook.getHookData(submittedDeltaFee);
-        swapRouter.swap(key, params, testSettings, hookData);
+        // hookData = hook.getHookData(submittedDeltaFee);
+        swapRouter.swap(key, params, testSettings, ZERO_BYTES);
         
 
-        hookData = hook.getHookData(submittedDeltaFee);
+        // hookData = hook.getHookData(submittedDeltaFee);
         submittedDeltaFee = 1500;
-        hookData = hook.getHookData(submittedDeltaFee);
-        swapRouter.swap(key, params, testSettings, hookData);
+        // hookData = hook.getHookData(submittedDeltaFee);
+        swapRouter.swap(key, params, testSettings, ZERO_BYTES);
 
         uint256 balanceOfToken1After = currency1.balanceOfSelf();
         uint256 outputFromBaseFeeSwap = balanceOfToken1After -
