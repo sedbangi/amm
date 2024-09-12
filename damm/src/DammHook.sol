@@ -10,10 +10,10 @@ import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapDelta.sol";
 
 import {DammOracle} from "../src/DammOracle.sol";
-import {DammHook} from "../src/DammHook.sol";
 import {console} from "forge-std/console.sol";
 import {FeeQuantizer} from "../src/FeeQuantizer.sol";
 import {MevClassifier} from "../src/MevClassifier.sol";
+import {DammHookHelper} from "../src/DammHookHelper.sol";
 
 
 contract DammHook is BaseHook {
@@ -71,6 +71,7 @@ contract DammHook is BaseHook {
         feeQuantizer = new FeeQuantizer();
         mevClassifier = new MevClassifier(address(feeQuantizer), 5, 1, 2);
         dammOracle = new DammOracle();
+        DammHookHelper = new DammHookHelper(address(dammOracle));
 
         //TODO clean up
         updateMovingAverage();
@@ -141,7 +142,10 @@ contract DammHook is BaseHook {
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
                 // Update the dynamic LP fee
-                uint24 finalPoolFee = mevFlag ? BASE_FEE * 10: BASE_FEE;
+                uint24 finalPoolFee = 
+                    mevFlag ? BASE_FEE * 10: uint24(
+                        DammHookHelper.calculateCombinedFee(blockNumber, sender));
+
                 poolManager.updateDynamicLPFee(key, finalPoolFee);
                 // poolManager.updateDynamicLPFee(key, fee);
                 console.log("Blocknumber: ", blockNumber);
