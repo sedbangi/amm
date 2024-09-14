@@ -48,7 +48,7 @@ contract DammOracle {
      function getPriceVolatility() public pure returns (uint256) {
         // Use integer arithmetic to approximate 0.1 / sqrt(86400 / 13)
         uint256 numerator = 1; // 0.1 scaled by 10
-        uint256 denominator = sqrt(86400 / 13) * 10; // Scale the denominator by 10
+        uint256 denominator = sqrt(uint256(86400) / 13) * 10; // Scale the denominator by 10
         return numerator * 1e18 / denominator; // Scale the result by 1e18 for precision
     }
 
