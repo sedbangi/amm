@@ -41,10 +41,11 @@ contract DammHook is BaseHook {
     //Storage for submittedDeltaFees
     // uint256[] public submittedDeltaFees;
     mapping(address sender => uint256 inputAmount) public submittedDeltaFees;
-    mapping(uint256 => bool) public previousBlockSwappers;
+    //mapping(uint256 => bool) public previousBlockSwappers;
 
     // TODO reset for a new block - maybe a Trader struct
     address[] senders;
+    uint256[2] blockNumbersStored;
 
     struct NewHookData {
         bytes hookData;
@@ -130,7 +131,7 @@ contract DammHook is BaseHook {
             )   external override
                 returns (bytes4, BeforeSwapDelta, uint24)
             {
-                uint256 blockNumber = uint256(block.number);
+                uint256 currentBlockNumber = uint256(block.number);
                 int256 amountToSwap = params.amountSpecified;
                 uint256 poolFee;
 
@@ -149,7 +150,9 @@ contract DammHook is BaseHook {
                     submittedDeltaFee = abi.decode(data.hookData, (uint256));
                 }
                 
-                _storeSubmittedDeltaFee(sender_address, blockNumber, submittedDeltaFee);
+                _checkForNewBlockAndCleanStorage(currentBlockNumber);
+                _storeSubmittedDeltaFee(sender_address, submittedDeltaFee);
+                
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
@@ -166,13 +169,13 @@ contract DammHook is BaseHook {
                 // Adjust the fee based on order book pressure
                 // ToDo: USE BUY OR SEll 
                 if (orderBookPressure > 0 && !params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(blockNumber, sender_address));
+                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));
                 } else if (orderBookPressure < 0 && !params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(blockNumber, sender_address));                
+                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
                 } else if (orderBookPressure > 0 && params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(blockNumber, sender_address));                
+                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
                 } else if (orderBookPressure < 0 && params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(blockNumber, sender_address));                
+                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
                 }
 
                 // Update the dynamic LP fee
@@ -181,7 +184,7 @@ contract DammHook is BaseHook {
 
                 poolManager.updateDynamicLPFee(key, finalPoolFee);
                 // poolManager.updateDynamicLPFee(key, fee);
-                console.log("Blocknumber: ", blockNumber);
+                console.log("Blocknumber: ", currentBlockNumber);
             return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalPoolFee);
     }
 
@@ -194,6 +197,38 @@ contract DammHook is BaseHook {
 
     function random(uint256 min, uint256 max, uint256 nonce) public view returns (uint256) {
         return min + (uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1));
+    }
+
+    function _checkForNewBlockAndCleanStorage(uint256 currentBlockNumber) internal {
+        // very first block 1
+        // if(blockNumbersStored[0] == 0) {
+
+        //     console.log("_checkForNewBlockAndCleanStorage | first block");
+        //     return;
+        // }
+
+        // no new block
+        // current block = block t
+        if(currentBlockNumber == blockNumbersStored[1]) {
+            console.log("_checkForNewBlockAndCleanStorage | new block");
+            return;
+        }
+
+        // current block > block t
+        // delete senders list with submitted fees in the first swap for a new block
+        if(currentBlockNumber > blockNumbersStored[1]) {
+            delete senders;
+            console.log("_checkForNewBlockAndCleanStorage | deleting senders");
+        }
+
+        // new block
+        if(currentBlockNumber > blockNumbersStored[0]) {
+            blockNumbersStored[0] = blockNumbersStored[1];
+            blockNumbersStored[1] = currentBlockNumber;
+            console.log("_checkForNewBlockAndCleanStorage | block t-1", blockNumbersStored[0]);
+            console.log("_checkForNewBlockAndCleanStorage | block t", blockNumbersStored[1]);
+            console.log("_checkForNewBlockAndCleanStorage | current block", currentBlockNumber);
+        }
     }
 
     function _storeSubmittedDeltaFee(
@@ -236,10 +271,16 @@ contract DammHook is BaseHook {
     }
 
     function exogenousDynamicFee(address swapperId) internal view returns (uint256) {
-        if (submittedDeltaFees.length < 2) {
+        if (senders.length < 2) {
             return BASE_FEE;
         }
-        uint256[] memory sortedFees = submittedDeltaFees;
+
+        uint256[] memory sortedFees = new uint256[](senders.length);
+
+        for (uint i = 0; i < senders.length; i++) {
+            sortedFees[i] = submittedDeltaFees[senders[i]];
+        }
+
         // Sort the fees
         for (uint i = 0; i < sortedFees.length; i++) {
             for (uint j = i + 1; j < sortedFees.length; j++) {
@@ -261,6 +302,8 @@ contract DammHook is BaseHook {
             sigmaFee += (sortedFees[i] - meanFee) ** 2;
         }
         sigmaFee = sqrt(sigmaFee / cutoffIndex);
+        
+        //TODO replace previousBlockSwappers with senders
         uint256 dynamicFee = previousBlockSwappers[swapperId] ? meanFee + m * sigmaFee : n * sigmaFee;
         return dynamicFee;
     }
