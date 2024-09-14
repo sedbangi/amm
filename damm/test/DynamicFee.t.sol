@@ -8,9 +8,10 @@ import {DammOracle} from "../src/DammOracle.sol";
 
 
 contract DynamicFeeTest is Test {
-    DammHook public dammHook;
-    FeeQuantizer public quantizeFee;
-
+    DammHook dammHook;
+    DammOracle dammOracle;
+    FeeQuantizer quantizeFee;
+ 
     uint256 public BASE_FEE = 100;
     uint256 public CUT_OFF_PERCENTILE = 50;
     uint256 public N = 2;
