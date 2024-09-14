@@ -59,6 +59,12 @@ rm ./**/Counter*.sol
 export FORGE_SNAPSHOT_CHECK=true
 ```
 
+#### Change PoolSwapTest line 66 for sennding sender address in hookdata
+```
+// BalanceDelta delta = manager.swap(data.key, data.params, data.hookData);
+BalanceDelta delta = manager.swap(data.key, data.params, abi.encode(NewHookData(data.hookData, address(data.sender))));
+```
+
 #### Build
 
 ```shell
