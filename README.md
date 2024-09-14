@@ -59,7 +59,17 @@ rm ./**/Counter*.sol
 export FORGE_SNAPSHOT_CHECK=true
 ```
 
-#### Change PoolSwapTest line 66 for sennding sender address in hookdata
+
+
+#### Change PoolSwapTest for sending sender address in hookdata
+add as a global struct
+```
+    struct NewHookData {
+        bytes originalHookData;
+        address senderAddress;
+    }
+```
+change the line below
 ```
 // BalanceDelta delta = manager.swap(data.key, data.params, data.hookData);
 BalanceDelta delta = manager.swap(data.key, data.params, abi.encode(NewHookData(data.hookData, address(data.sender))));
