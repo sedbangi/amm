@@ -54,6 +54,11 @@ forge remappings > remappings.txt
 rm ./**/Counter*.sol
 ```
 
+#### Set env variable
+```
+export FORGE_SNAPSHOT_CHECK=true
+```
+
 #### Build
 
 ```shell

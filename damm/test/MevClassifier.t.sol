@@ -11,7 +11,7 @@ contract TestMevClassifier is Test {
 
     function setUp() public {
         feeSimulator = new PriorityFeeSimulation(5, 2);
-        mevClassifier = new MevClassifier(address(feeSimulator), 5, 1, 2);
+        mevClassifier = new MevClassifier(5, 1, 2);
     }
 
     function testClassifyTransaction() public {

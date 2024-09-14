@@ -60,7 +60,7 @@ contract DammHook is BaseHook {
     // Initialize BaseHook parent contract in the constructor
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         feeQuantizer = new FeeQuantizer();
-        mevClassifier = new MevClassifier(address(feeQuantizer), 5, 1, 2);
+        mevClassifier = new MevClassifier(5, 1, 2);
         dammOracle = new DammOracle();
         cutOffPercentile = 85;
         firstTransaction = true;
@@ -106,7 +106,7 @@ contract DammHook is BaseHook {
         return this.beforeInitialize.selector;
     }
 
-    function calculateCombinedFee(uint256 blockId, address swapperId) internal view returns (uint256) {
+    function calculateCombinedFee(uint256 blockId, address swapperId) internal returns (uint256) {
         uint256 combinedFee = alpha * endogenousDynamicFee(blockId) + (100 - alpha) * exogenousDynamicFee(swapperId) / 100;
         combinedFee = combinedFee > endogenousDynamicFee(blockId) ? combinedFee : endogenousDynamicFee(blockId);
         if (combinedFee <= BASE_FEE * 125 / 100) {
@@ -138,17 +138,19 @@ contract DammHook is BaseHook {
                 uint24 fee = BASE_FEE;
                 uint24 INTERIM_FEE = BASE_FEE;
 
-                uint256 offChainMidPrice = dammOracle.getOrderBookPressure();
-
 
                 NewHookData memory data = abi.decode(hookData, (NewHookData));
                 address sender_address = data.sender;
+                console.log("beforeSwap | Blocknumber: ", currentBlockNumber);
+                console.log("beforeSwap | Sender: ", sender_address);
 
                 uint256 submittedDeltaFee = 0;
 
                 if (data.hookData.length > 0) {
                     submittedDeltaFee = abi.decode(data.hookData, (uint256));
                 }
+
+                console.log("beforeSwap | Submitted Delta Fee: ", submittedDeltaFee);
                 
                 _checkForNewBlockAndCleanStorage(currentBlockNumber);
                 _storeSubmittedDeltaFee(sender_address, currentBlockNumber, submittedDeltaFee);
@@ -156,7 +158,7 @@ contract DammHook is BaseHook {
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
-                // Adjust fee based on MEV classificatio
+                // // Adjust fee based on MEV classificatio
                 uint256 priorityFee = getPriorityFee();
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
@@ -164,33 +166,33 @@ contract DammHook is BaseHook {
                 // Fetch order book pressure from DammOracle
                 uint256 orderBookPressure = dammOracle.getOrderBookPressure();
 
-                // Adjust the fee based on order book pressure
-                // ToDo: USE BUY OR SEll 
-                if (orderBookPressure > 0 && !params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));
-                } else if (orderBookPressure < 0 && !params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
-                } else if (orderBookPressure > 0 && params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
-                } else if (orderBookPressure < 0 && params.zeroForOne) {
-                    INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
-                }
+                // // Adjust the fee based on order book pressure
+                // // ToDo: USE BUY OR SEll 
+                // if (orderBookPressure > 0 && !params.zeroForOne) {
+                //     INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));
+                // } else if (orderBookPressure < 0 && !params.zeroForOne) {
+                //     INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
+                // } else if (orderBookPressure > 0 && params.zeroForOne) {
+                //     INTERIM_FEE = BASE_FEE - uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
+                // } else if (orderBookPressure < 0 && params.zeroForOne) {
+                //     INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));                
+                // }
 
-                // Update the dynamic LP fee
-                uint24 finalPoolFee = 
-                    mevFlag ? BASE_FEE * 10: uint24(INTERIM_FEE);
+                // // Update the dynamic LP fee
+                // uint24 finalPoolFee = 
+                //     mevFlag ? BASE_FEE * 10: uint24(INTERIM_FEE);
 
-                poolManager.updateDynamicLPFee(key, finalPoolFee);
-                // poolManager.updateDynamicLPFee(key, fee);
-                console.log("Blocknumber: ", currentBlockNumber);
-            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalPoolFee);
+                // //poolManager.updateDynamicLPFee(key, finalPoolFee);
+                // // poolManager.updateDynamicLPFee(key, fee);
+                // console.log("Blocknumber: ", currentBlockNumber);
+            return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     function getPriorityFee() public view returns (uint256) {
         // currently returns the priority fee as a random number between 0 and 10000
         //uint256 minersTip = tx.gasprice - block.basefee;
         //return minersTip;
-        return random(10, 10000, 100);
+        return random(10, 10000, 100) * 1000;
     }
 
     function random(uint256 min, uint256 _max, uint256 nonce) public view returns (uint256) {

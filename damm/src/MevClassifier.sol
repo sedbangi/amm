@@ -12,8 +12,8 @@ contract MevClassifier {
     uint256 public totalReturns;
     uint256 public totalSquaredReturns;
 
-    constructor(address _dammOracle, uint256 _K, uint256 _mSigma, uint256 _nSigma) {
-        dammOracle = DammOracle(_dammOracle);
+    constructor(uint256 _K, uint256 _mSigma, uint256 _nSigma) {
+        dammOracle = new DammOracle();
         K = _K;
         mSigma = _mSigma;
         nSigma = _nSigma;

@@ -8,7 +8,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulatorTest is Test {
     PriorityFeeAndPriceReturnVolatilitySimulator public simulator;
 
     function setUp() public {
-        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(10);
+        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator();
     }
 
     function testClassifyMEVTransaction() public {
