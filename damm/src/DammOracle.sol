@@ -45,14 +45,11 @@ contract DammOracle {
         pricesAfter[blockId] = priceAfter;
     }
 
-    // Function to get prices
-    function getPrices(uint256 blockId) public view returns (uint256, uint256) {
-        return (pricesBefore[blockId], pricesAfter[blockId]);
-    }
-    }
-
-    function getPriceVolatility() public view returns (uint256) {
-        return volatilityCalculator.getPriceVolatility();
+     function getPriceVolatility() public pure returns (uint256) {
+        // Use integer arithmetic to approximate 0.1 / sqrt(86400 / 13)
+        uint256 numerator = 1; // 0.1 scaled by 10
+        uint256 denominator = sqrt(86400 / 13) * 10; // Scale the denominator by 10
+        return numerator * 1e18 / denominator; // Scale the result by 1e18 for precision
     }
 
     function getPriorityFeeVolatility() public view returns (uint256) {
@@ -63,16 +60,21 @@ contract DammOracle {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % (max - min + 1) + min;
     }
 
-    // function getPrices(uint256 blockId) external view returns (uint256 priceBeforePreviousBlock, 
-    //                                                            uint256 priceAfterPreviousBlock) {
-    //     // Simulate fetching two consecutive prices from Gbm
-    //     // uint256 priceVolatility = getPriceVolatility(); 
-    //     uint256 priceVolatility = 0.1 / sqrt(86400/13);
-    //     uint256 basePrice = 1000; // Example base price
-    //     // Simulate price before the previous block
-    //     priceBeforePreviousBlock = basePrice + random(0, priceVolatility);
-    //     // Simulate price after the previous block
-    //     priceAfterPreviousBlock = basePrice + random(0, priceVolatility);
-    //     return (priceBeforePreviousBlock, priceAfterPreviousBlock);
-    // }
+    function getPrices(uint256 blockId) external view returns (uint256 priceBeforePreviousBlock, uint256 priceAfterPreviousBlock) {
+        uint256 priceVolatility = getPriceVolatility();
+        uint256 basePrice = 1000;
+        priceBeforePreviousBlock = basePrice + random(0, priceVolatility);
+        priceAfterPreviousBlock = basePrice + random(0, priceVolatility);
+        return (priceBeforePreviousBlock, priceAfterPreviousBlock);
+    }
+
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        uint256 z = (x + 1) / 2;
+        uint256 y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+        return y;
+    }
 }

@@ -26,23 +26,20 @@ contract DammHook is BaseHook {
     FeeQuantizer feeQuantizer;
     MevClassifier mevClassifier;
     DammOracle dammOracle;
-
+    
     uint256 public cutOffPercentile;
     bool public firstTransaction;
     uint256 public alpha;
     uint256 public m;
     uint256 public n;
 
-    // The default base fees we will charge
     uint24 public constant BASE_FEE = 3000; // 0.3%
-
     uint24 public constant CUT_OFF_PERCENTILE = 85;
-
     uint24 public constant N = 2;
-
     error MustUseDynamicFee();
 
     //Storage for submittedDeltaFees
+    // uint256[] public submittedDeltaFees;
     mapping(address sender => uint256 inputAmount) public submittedDeltaFees;
     mapping(uint256 => bool) public previousBlockSwappers;
 
@@ -104,8 +101,6 @@ contract DammHook is BaseHook {
         uint160,
         bytes calldata
     ) external pure override returns (bytes4) {
-        // `.isDynamicFee()` function comes from using
-        // the `SwapFeeLibrary` for `uint24`
         if (!key.fee.isDynamicFee()) revert MustUseDynamicFee();
         return this.beforeInitialize.selector;
     }
@@ -296,9 +291,7 @@ contract DammHook is BaseHook {
         for (uint256 i = 0; i < senders.length; i++) {
             sortedDeltaFees[i] = submittedDeltaFees[senders[i]];
         }
-
         sort(sortedDeltaFees);
-
         uint256 cutoffIndex = (numberSenders * CUT_OFF_PERCENTILE) / 100;
         uint256[] memory filteredFees = new uint256[](cutoffIndex);
         for (uint256 i = 0; i < cutoffIndex; i++) {
@@ -306,15 +299,6 @@ contract DammHook is BaseHook {
         }        
         uint256 sigmaFee = calculateStdDev(filteredFees, calculateMean(filteredFees));
         uint256 calculatedDeltaFeeForBlock = N * sigmaFee;
-
-        // TODO include intent to trade next block
-        // if (swapperIntent[swapperId]) {
-        //     uint256 meanFee = mean(filteredFees);
-        //     calculatedDeltaFeeForBlock = meanFee.add(m.mul(sigmaFee));
-        // } else {
-        //     calculatedDeltaFeeForBlock = n.mul(sigmaFee);
-        // }
-
         return calculatedDeltaFeeForBlock;
     }
 
