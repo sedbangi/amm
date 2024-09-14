@@ -157,14 +157,19 @@ contract DammHook is BaseHook {
                 
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
+                console.log("beforeSwap | Quantized Fee: ", quantizedFee);
 
                 // // Adjust fee based on MEV classificatio
                 uint256 priorityFee = getPriorityFee();
+                console.log("beforeSwap | Priority Fee: ", priorityFee);
+
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
+                console.log("beforeSwap | MEV Flag: ", mevFlag);
 
                 
                 // Fetch order book pressure from DammOracle
                 uint256 orderBookPressure = dammOracle.getOrderBookPressure();
+                console.log("beforeSwap | Order Book Pressure: ", orderBookPressure);
 
                 // // Adjust the fee based on order book pressure
                 // // ToDo: USE BUY OR SEll 
