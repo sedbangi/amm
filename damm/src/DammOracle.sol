@@ -27,14 +27,14 @@ contract DammOracle {
     }
 
     function getOrderBookPressure() public view returns (uint256) {
-        uint256 bidSize = random(1, 1000);
+        uint256 bidSize = random(1, 1000, 0);
         console.log("getOrderBookPressure | bid size:", bidSize);
         uint256 bidPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (HUNDRED_PERCENT - HALF_SPREAD) / HUNDRED_PERCENT;
 
         console.log("getOrderBookPressure | bid price:", bidPrice);
         uint256 askPrice = OFF_CHAIN_MID_PRICE_ETH_USDT * (HUNDRED_PERCENT + HALF_SPREAD) / HUNDRED_PERCENT;
         console.log("getOrderBookPressure | ask price:", askPrice);
-        uint256 askSize = random(1, 1000);
+        uint256 askSize = random(1, 1000, 1);
         console.log("getOrderBookPressure | ask size:", askSize);
         return (askSize * askPrice - bidSize * bidPrice) * 1000 / (askSize * askPrice + bidSize * bidPrice);
     }
@@ -56,15 +56,15 @@ contract DammOracle {
         return volatilityCalculator.getPriorityFeeVolatility();
     }
 
-    function random(uint256 min, uint256 max) internal view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % (max - min + 1) + min;
+    function random(uint256 min, uint256 max, uint256 nonce) internal view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1) + min;
     }
 
     function getPrices(uint256 blockId) external view returns (uint256 priceBeforePreviousBlock, uint256 priceAfterPreviousBlock) {
         uint256 priceVolatility = getPriceVolatility();
         uint256 basePrice = 1000;
-        priceBeforePreviousBlock = basePrice + random(0, priceVolatility);
-        priceAfterPreviousBlock = basePrice + random(0, priceVolatility);
+        priceBeforePreviousBlock = basePrice + random(0, priceVolatility, 4);
+        priceAfterPreviousBlock = basePrice + random(0, priceVolatility, 5);
         return (priceBeforePreviousBlock, priceAfterPreviousBlock);
     }
 

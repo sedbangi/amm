@@ -154,7 +154,9 @@ contract DammHook is BaseHook {
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
                 // Adjust fee based on MEV classification
-                uint256 priorityFee = getPriorityFee(params);
+                //uint256 priorityFee = getPriorityFee(params);
+                // getting a random number between 0 and 10_000 as priorty fee
+                uint256 priorityFee = getPriorityFee();
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
                 
@@ -183,10 +185,15 @@ contract DammHook is BaseHook {
             return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, finalPoolFee);
     }
 
-    function getPriorityFee(TransactionParams calldata params) public view returns (uint256) {
-        // currently returns the priority fee as a random number
-        uint256 minersTip = tx.gasprice - block.basefee;
-        return minersTip;
+    function getPriorityFee() public view returns (uint256) {
+        // currently returns the priority fee as a random number between 0 and 10000
+        //uint256 minersTip = tx.gasprice - block.basefee;
+        //return minersTip;
+        return random(10, 10000, 100);
+    }
+
+    function random(uint256 min, uint256 max, uint256 nonce) public view returns (uint256) {
+        return min + (uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1));
     }
 
     function _storeSubmittedDeltaFee(
