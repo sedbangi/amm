@@ -4,6 +4,8 @@ pragma solidity 0.8.26;
 import "forge-std/Test.sol";
 import "../src/DammHook.sol";
 import "../src/FeeQuantizer.sol";
+import {DammOracle} from "../src/DammOracle.sol";
+
 
 contract DynamicFeeTest is Test {
     DammHook public dammHook;
@@ -18,7 +20,8 @@ contract DynamicFeeTest is Test {
 
     function setUp() public {
         quantizeFee = new FeeQuantizer();
-        dammHook = new DammHook();
+        dammOracle = new DammOracle();
+        dammHook = new DammHook(address(dammOracle));
 
         // Initialize mock data
         senders.push(address(0x1));

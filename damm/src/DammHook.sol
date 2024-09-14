@@ -151,7 +151,7 @@ contract DammHook is BaseHook {
                 }
                 
                 _checkForNewBlockAndCleanStorage(currentBlockNumber);
-                _storeSubmittedDeltaFee(sender_address, submittedDeltaFee);
+                _storeSubmittedDeltaFee(sender_address, currentBlockNumber, submittedDeltaFee);
                 
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
@@ -268,6 +268,15 @@ contract DammHook is BaseHook {
         return dynamicFee;
     }
 
+    function isSwapperInSenders(address swapperId) internal view returns (bool) {
+        for (uint256 i = 0; i < senders.length; i++) {
+            if (senders[i] == swapperId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function exogenousDynamicFee(address swapperId) internal view returns (uint256) {
         if (senders.length < 2) {
             return BASE_FEE;
@@ -302,7 +311,8 @@ contract DammHook is BaseHook {
         sigmaFee = sqrt(sigmaFee / cutoffIndex);
         
         //TODO replace previousBlockSwappers with senders
-        uint256 dynamicFee = senders[swapperId] ? meanFee + m * sigmaFee : n * sigmaFee;
+        bool isInSenders = isSwapperInSenders(swapperId);
+        uint256 dynamicFee = isInSenders ? meanFee + m * sigmaFee : n * sigmaFee;
         return dynamicFee;
     }
 
