@@ -156,9 +156,7 @@ contract DammHook is BaseHook {
                 // Quantize the fee
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
 
-                // Adjust fee based on MEV classification
-                //uint256 priorityFee = getPriorityFee(params);
-                // getting a random number between 0 and 10_000 as priorty fee
+                // Adjust fee based on MEV classificatio
                 uint256 priorityFee = getPriorityFee();
                 bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
 
@@ -195,8 +193,8 @@ contract DammHook is BaseHook {
         return random(10, 10000, 100);
     }
 
-    function random(uint256 min, uint256 max, uint256 nonce) public view returns (uint256) {
-        return min + (uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1));
+    function random(uint256 min, uint256 _max, uint256 nonce) public view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (_max - min + 1) + min;
     }
 
     function _checkForNewBlockAndCleanStorage(uint256 currentBlockNumber) internal {
@@ -304,7 +302,7 @@ contract DammHook is BaseHook {
         sigmaFee = sqrt(sigmaFee / cutoffIndex);
         
         //TODO replace previousBlockSwappers with senders
-        uint256 dynamicFee = previousBlockSwappers[swapperId] ? meanFee + m * sigmaFee : n * sigmaFee;
+        uint256 dynamicFee = senders[swapperId] ? meanFee + m * sigmaFee : n * sigmaFee;
         return dynamicFee;
     }
 
