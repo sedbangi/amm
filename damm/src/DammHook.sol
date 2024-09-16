@@ -64,9 +64,7 @@ contract DammHook is BaseHook {
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         feeQuantizer = new FeeQuantizer();
         mevClassifier = new MevClassifier(5, 1, 2);
-        // Example with 200 historical blocks
-        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200); 
-        dammOracle = new DammOracle(address(simulator));
+        dammOracle = new DammOracle();
         cutOffPercentile = 85;
         firstTransaction = true;
         alpha = 50;
@@ -161,7 +159,17 @@ contract DammHook is BaseHook {
 
                 uint24 fee = BASE_FEE;
                 uint24 INTERIM_FEE = BASE_FEE;
+                uint256 trxPriorityFee = tx.gasprice - block.basefee;
 
+                console.log("beforeSwap | Priority Fee: ", trxPriorityFee);
+
+                // Calculate sigma-priority fee
+                uint256 sigmaPriorityFee = dammOracle.getPriorityFeeVolatility();
+                console.log("beforeSwap | Priority Fee: ", sigmaPriorityFee);
+
+                // Calculate sigma of the price returns
+                // uint256 sigmaPriceReturn = dammOracle.getPriceVolatility();
+                // console.log("beforeSwap | Price Return: ", sigmaPriceReturn);
 
                 NewHookData memory data = abi.decode(hookData, (NewHookData));
                 address sender_address = data.sender;
@@ -187,7 +195,7 @@ contract DammHook is BaseHook {
                 uint256 priorityFee = getPriorityFee();
                 console.log("beforeSwap | Priority Fee: ", priorityFee);
 
-                bool mevFlag = mevClassifier.classifyTransaction(priorityFee);
+                bool mevFlag = _checkForMEVbasedOnPrioFee(trxPriorityFee, sigmaPriorityFee);
                 console.log("beforeSwap | MEV Flag: ", mevFlag);
 
                 
@@ -226,6 +234,11 @@ contract DammHook is BaseHook {
 
     function random(uint256 min, uint256 _max, uint256 nonce) public view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (_max - min + 1) + min;
+    }
+
+    function _checkForMEVbasedOnPrioFee(uint256 priorityFee, uint256 sigmaPriorityFee) internal returns (bool) {
+        if (priorityFee > sigmaPriorityFee) return true;
+        return false;
     }
 
     function _checkForNewBlockAndCleanStorage(uint256 currentBlockNumber) internal {

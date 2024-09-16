@@ -18,17 +18,14 @@ contract DammOracle {
     mapping(uint256 => uint256) public pricesBefore;
     mapping(uint256 => uint256) public pricesAfter;
 
-    constructor(address simulatorAddress) {
+    constructor() {
         // volatilityCalculator = new PriorityFeeAndPriceReturnVolatilitySimulator(100);
-        simulator = PriorityFeeAndPriceReturnVolatilitySimulator(simulatorAddress);
+        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200);
+        simulator.generateDataAndCalculateVolatilities();
     }
 
     function getOffchainMidPrice() public view returns(uint256 offChainMidPrice) {
         return OFF_CHAIN_MID_PRICE_ETH_USDT;
-    }
-
-    function callGenerateDataAndCalculateVolatilities() public returns (uint256, uint256) {
-        return simulator.generateDataAndCalculateVolatilities();
     }
 
     function getOrderBookPressure() public view returns (uint256) {
@@ -50,13 +47,9 @@ contract DammOracle {
         pricesAfter[blockId] = priceAfter;
     }
 
-     function getPriceVolatility() public pure returns (uint256) {
-        // Use integer arithmetic to approximate 0.1 / sqrt(86400 / 13)
-        uint256 numerator = 1; // 0.1 scaled by 10
-        uint256 denominator = sqrt(uint256(86400) / 13) * 10; // Scale the denominator by 10
-        return numerator * 1e18 / denominator; // Scale the result by 1e18 for precision
+    function getPriceVolatility() public view returns (uint256) {
+        return simulator.getPriceVolatility();
     }
-
 
     function getPriorityFeeVolatility() public view returns (uint256) {
         return simulator.getPriorityFeeVolatility();

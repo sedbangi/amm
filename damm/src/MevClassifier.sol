@@ -18,7 +18,7 @@ contract MevClassifier {
     constructor(uint256 _K, uint256 _mSigma, uint256 _nSigma) {
         // Example with 200 historical blocks
         simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200); 
-        dammOracle = new DammOracle(address(simulator));
+        dammOracle = new DammOracle();
         K = _K;
         mSigma = _mSigma;
         nSigma = _nSigma;

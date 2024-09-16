@@ -2,12 +2,15 @@
 pragma solidity 0.8.26;
 
 
+import {console} from "forge-std/console.sol";
+
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256 public historicalBlocks;
     uint256[] public priorityFees;
     uint256[] public prices;
     uint256[] public blockNumbers;
     uint256 public index;
+    bool first_trx;
 
     constructor(uint256 _historicalBlocks) {
         historicalBlocks = _historicalBlocks;
@@ -19,7 +22,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
 
     function recordData(uint256 priorityFee, uint256 price) public {
         if (block.number > blockNumbers[index]) {
-            priorityFees[index] = priorityFee;
+            priorityFees[index] = priorityFee; 
             prices[index] = price;
             blockNumbers[index] = block.number;
             index = (index + 1) % historicalBlocks;
@@ -32,6 +35,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
             uint256 randomPriorityFee = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 10_000 + 1; 
             //priorityFees[i % historicalBlocks] = randomPriorityFee;
             //blockNumbers[i % historicalBlocks] = block.number + i;
+            
             priorityFees[i] = randomPriorityFee;
             blockNumbers[i] = block.number + i;
         }
@@ -60,9 +64,12 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     function calculateStdDev(
         uint256[] memory data, uint256 mean) internal view returns (uint256) {
         uint256 variance = 0;
+
         for (uint256 i = 0; i < data.length; i++) {
-            variance += (data[i] - mean) * (data[i] - mean);
+            uint256 diff = data[i] > mean ? data[i] - mean : mean - data[i];
+            variance += diff * diff;
         }
+
         variance /= data.length;
         return sqrt(variance);
     }
