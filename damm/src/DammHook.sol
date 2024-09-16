@@ -48,6 +48,7 @@ contract DammHook is BaseHook {
     // TODO reset for a new block - maybe a Trader struct
     address[] senders;
     uint256[2] blockNumbersStored;
+    bool first_trx;
 
     struct NewHookData {
         bytes hookData;
@@ -237,7 +238,8 @@ contract DammHook is BaseHook {
         // no new block
         // current block = block t
         if(currentBlockNumber == blockNumbersStored[1]) {
-            console.log("_checkForNewBlockAndCleanStorage | new block");
+            first_trx = false;
+            console.log("_checkForNewBlockAndCleanStorage | no new block");
             return;
         }
 
@@ -245,11 +247,13 @@ contract DammHook is BaseHook {
         // delete senders list with submitted fees in the first swap for a new block
         if(currentBlockNumber > blockNumbersStored[1]) {
             delete senders;
-            console.log("_checkForNewBlockAndCleanStorage | deleting senders");
+            first_trx = true;
+            console.log("_checkForNewBlockAndCleanStorage | first trx, deleting senders");
         }
 
         // new block
         if(currentBlockNumber > blockNumbersStored[0]) {
+            first_trx = false;
             blockNumbersStored[0] = blockNumbersStored[1];
             blockNumbersStored[1] = currentBlockNumber;
             console.log("_checkForNewBlockAndCleanStorage | block t-1", blockNumbersStored[0]);
@@ -310,6 +314,10 @@ contract DammHook is BaseHook {
     }
 
     function exogenousDynamicFee(address swapperId) internal view returns (uint256) {
+        if (first_trx) {
+            return BASE_FEE * 5;
+        }
+
         if (senders.length < 2) {
             return BASE_FEE;
         }
