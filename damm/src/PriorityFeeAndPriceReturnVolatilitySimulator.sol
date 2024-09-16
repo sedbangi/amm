@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {console} from "forge-std/console.sol";
 
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256 public historicalBlocks;
@@ -10,15 +9,15 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256[] public blockNumbers;
     uint256 public index;
 
-    constructor() {
-        // include GBM to create hist blocks
-        // historicalBlocks = _historicalBlocks;
-        // priorityFees = new uint256[](_historicalBlocks);
-        // prices = new uint256[](_historicalBlocks);
-        // blockNumbers = new uint256[](_historicalBlocks);
-        // index = 0;
+    constructor(uint256 _historicalBlocks) {
+        historicalBlocks = _historicalBlocks;
+        priorityFees = new uint256[](_historicalBlocks);
+        prices = new uint256[](_historicalBlocks);
+        blockNumbers = new uint256[](_historicalBlocks);
+        index = 0;
     }
 
+    /*
     function recordData(uint256 priorityFee, uint256 price) public {
         if (block.number > blockNumbers[index]) {
             priorityFees[index] = priorityFee;
@@ -26,9 +25,28 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
             blockNumbers[index] = block.number;
             index = (index + 1) % historicalBlocks;
         }
+    }*/
+
+    function generateRandomPriorityFeesStandardizedToThousand() public {
+        // Random value between 1 and 1000
+        for (uint256 i = 0; i < historicalBlocks; i++) {
+            uint256 randomPriorityFee = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 1000 + 1; 
+            priorityFees[i % historicalBlocks] = randomPriorityFee;
+            blockNumbers[i % historicalBlocks] = block.number + i;
+        }
     }
 
-    function calculateMean(uint256[] memory data) internal pure returns (uint256) {
+    function generateRandomPricesStandardizedToThousand() public {
+        // Random value between 1 and 10000
+        for (uint256 i = 0; i < historicalBlocks; i++) {
+            uint256 randomPrice = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 1000 + 1; 
+            prices[i % historicalBlocks] = randomPrice;
+            blockNumbers[i % historicalBlocks] = block.number + i;
+        }
+    }
+
+    function calculateMean(
+        uint256[] memory data) internal view returns (uint256) {
         uint256 sum = 0;
         for (uint256 i = 0; i < data.length; i++) {
             sum += data[i];
@@ -36,7 +54,8 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return sum / data.length;
     }
 
-    function calculateStdDev(uint256[] memory data, uint256 mean) internal pure returns (uint256) {
+    function calculateStdDev(
+        uint256[] memory data, uint256 mean) internal view returns (uint256) {
         uint256 variance = 0;
         for (uint256 i = 0; i < data.length; i++) {
             variance += (data[i] - mean) * (data[i] - mean);
@@ -45,7 +64,8 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return sqrt(variance);
     }
 
-    function standardizeData(uint256[] memory data, uint256 mean, uint256 stdDev) internal pure returns (uint256[] memory) {
+    function standardizeData(
+        uint256[] memory data, uint256 mean, uint256 stdDev) internal view returns (uint256[] memory) {
         uint256[] memory standardizedData = new uint256[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             standardizedData[i] = (data[i] - mean) * 1e18 / stdDev; // Multiply by 1e18 to maintain precision
@@ -53,17 +73,21 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return standardizedData;
     }
 
-    function calculateVolatility(uint256[] memory data) internal pure returns (uint256) {
+    function calculateVolatility(uint256[] memory data) internal view returns (uint256) {
+        if (data.length == 0) {
+           return 0;
+        }
         uint256 mean = calculateMean(data);
         uint256 stdDev = calculateStdDev(data, mean);
         uint256[] memory standardizedData = standardizeData(data, mean, stdDev);
-
+        if (stdDev == 0) {
+            return 0; // Avoid division by zero
+        }
         uint256 variance = 0;
         for (uint256 i = 0; i < standardizedData.length; i++) {
             variance += standardizedData[i] * standardizedData[i];
         }
         variance /= standardizedData.length;
-
         return sqrt(variance);
     }
 
@@ -73,6 +97,16 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
 
     function getPriceVolatility() public view returns (uint256) {
         return calculateVolatility(prices);
+    }
+
+    function generateDataAndCalculateVolatilities() public returns (uint256, uint256) {
+        generateRandomPriorityFeesStandardizedToThousand();
+        generateRandomPricesStandardizedToThousand();
+        
+        uint256 priorityFeeVolatility = getPriorityFeeVolatility();
+        uint256 priceVolatility = getPriceVolatility();
+        
+        return (priorityFeeVolatility, priceVolatility);
     }
 
     function sqrt(uint256 x) internal pure returns (uint256) {

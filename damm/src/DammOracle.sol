@@ -12,18 +12,23 @@ contract DammOracle {
     uint256 constant SCALING_FACTOR = 10**18;
     uint256 public SqrtX96Price;
 
-    PriorityFeeAndPriceReturnVolatilitySimulator public volatilityCalculator;
+    PriorityFeeAndPriceReturnVolatilitySimulator public simulator;
 
     // State variables
     mapping(uint256 => uint256) public pricesBefore;
     mapping(uint256 => uint256) public pricesAfter;
 
-    constructor() {
-        volatilityCalculator = new PriorityFeeAndPriceReturnVolatilitySimulator();
+    constructor(address simulatorAddress) {
+        // volatilityCalculator = new PriorityFeeAndPriceReturnVolatilitySimulator(100);
+        simulator = PriorityFeeAndPriceReturnVolatilitySimulator(simulatorAddress);
     }
 
     function getOffchainMidPrice() public view returns(uint256 offChainMidPrice) {
         return OFF_CHAIN_MID_PRICE_ETH_USDT;
+    }
+
+    function callGenerateDataAndCalculateVolatilities() public returns (uint256, uint256) {
+        return simulator.generateDataAndCalculateVolatilities();
     }
 
     function getOrderBookPressure() public view returns (uint256) {
@@ -52,9 +57,16 @@ contract DammOracle {
         return numerator * 1e18 / denominator; // Scale the result by 1e18 for precision
     }
 
+
+    function getPriorityFeeVolatility() public view returns (uint256) {
+        return simulator.getPriorityFeeVolatility();
+    }
+
+    /*
     function getPriorityFeeVolatility() public view returns (uint256) {
         return volatilityCalculator.getPriorityFeeVolatility();
     }
+    */
 
     function random(uint256 min, uint256 max, uint256 nonce) internal view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1) + min;

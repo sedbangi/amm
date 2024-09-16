@@ -2,9 +2,12 @@
 pragma solidity 0.8.26;
 
 import "./DammOracle.sol";
+import "./PriorityFeeAndPriceReturnVolatilitySimulator.sol";
+
 
 contract MevClassifier {
     DammOracle public dammOracle;
+    PriorityFeeAndPriceReturnVolatilitySimulator public simulator;
     uint256 public K;
     uint256 public mSigma;
     uint256 public nSigma;
@@ -13,7 +16,9 @@ contract MevClassifier {
     uint256 public totalSquaredReturns;
 
     constructor(uint256 _K, uint256 _mSigma, uint256 _nSigma) {
-        dammOracle = new DammOracle();
+        // Example with 200 historical blocks
+        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200); 
+        dammOracle = new DammOracle(address(simulator));
         K = _K;
         mSigma = _mSigma;
         nSigma = _nSigma;
@@ -34,7 +39,6 @@ contract MevClassifier {
             totalReturns += priceReturn;
             totalSquaredReturns += priceReturn * priceReturn;
         }
-
         tokenPrices.push(price);
     }
 

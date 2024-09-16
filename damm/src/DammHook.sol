@@ -8,7 +8,7 @@ import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {BalanceDeltaLibrary, BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapDelta.sol";
-
+import "./PriorityFeeAndPriceReturnVolatilitySimulator.sol";
 import {DammOracle} from "../src/DammOracle.sol";
 import {console} from "forge-std/console.sol";
 import {FeeQuantizer} from "../src/FeeQuantizer.sol";
@@ -26,6 +26,8 @@ contract DammHook is BaseHook {
     FeeQuantizer feeQuantizer;
     MevClassifier mevClassifier;
     DammOracle dammOracle;
+
+    PriorityFeeAndPriceReturnVolatilitySimulator public simulator;
     
     uint256 public cutOffPercentile;
     bool public firstTransaction;
@@ -61,7 +63,9 @@ contract DammHook is BaseHook {
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         feeQuantizer = new FeeQuantizer();
         mevClassifier = new MevClassifier(5, 1, 2);
-        dammOracle = new DammOracle();
+        // Example with 200 historical blocks
+        simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200); 
+        dammOracle = new DammOracle(address(simulator));
         cutOffPercentile = 85;
         firstTransaction = true;
         alpha = 50;
