@@ -27,7 +27,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     }
 
     function generateRandomPriorityFeesStandardizedToThousand() public {
-        // Random value between 1 and 1000
+        // Random value between 1 and 10_000
         for (uint256 i = 0; i < historicalBlocks; i++) {
             uint256 randomPriorityFee = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 10_000 + 1; 
             //priorityFees[i % historicalBlocks] = randomPriorityFee;
@@ -38,7 +38,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     }
 
     function generateRandomPricesStandardizedToThousand() public {
-        // Random value between 1 and 10000
+        // Random value between 1 and 10_000
         for (uint256 i = 0; i < historicalBlocks; i++) {
             uint256 randomPrice = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 10_000 + 1; 
             //prices[i % historicalBlocks] = randomPrice;
@@ -67,31 +67,13 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return sqrt(variance);
     }
 
-    function standardizeData(
-        uint256[] memory data, uint256 mean, uint256 stdDev) internal view returns (uint256[] memory) {
-        uint256[] memory standardizedData = new uint256[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            standardizedData[i] = (data[i] - mean) * 1e18 / stdDev; // Multiply by 1e18 to maintain precision
-        }
-        return standardizedData;
-    }
-
     function calculateVolatility(uint256[] memory data) internal view returns (uint256) {
         if (data.length == 0) {
            return 0;
         }
         uint256 mean = calculateMean(data);
         uint256 stdDev = calculateStdDev(data, mean);
-        uint256[] memory standardizedData = standardizeData(data, mean, stdDev);
-        if (stdDev == 0) {
-            return 0; // Avoid division by zero
-        }
-        uint256 variance = 0;
-        for (uint256 i = 0; i < standardizedData.length; i++) {
-            variance += standardizedData[i] * standardizedData[i];
-        }
-        variance /= standardizedData.length;
-        return sqrt(variance);
+        return  stdDev;
     }
 
     function getPriorityFeeVolatility() public view returns (uint256) {
