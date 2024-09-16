@@ -129,7 +129,8 @@ contract DammHook is BaseHook {
         return combinedFee;
     }
 
-    function publicCalculateCombinedFee(uint256 blockId, address swapperId) public returns (uint256) {
+    function publicCalculateCombinedFee(uint256 blockId, address swapperId, bool first_trx) public returns (uint256) {
+        first_trx = first_trx ? first_trx = true : false;
         return calculateCombinedFee(blockId, swapperId);
     }
 
