@@ -126,6 +126,22 @@ contract DammHook is BaseHook {
         return combinedFee;
     }
 
+    function publicCalculateCombinedFee(uint256 blockId, address swapperId) public returns (uint256) {
+        return calculateCombinedFee(blockId, swapperId);
+    }
+
+    function setAlpha(uint256 _alpha) public {
+        alpha = _alpha;
+    }
+
+    function setFirstTransaction(bool _firstTransaction) public {
+        firstTransaction = _firstTransaction;
+    }
+
+    function getBaseFee() public pure returns (uint24) {
+        return BASE_FEE;
+    }
+
     // TODO external override onlyByPoolManager
     function beforeSwap(
                 address sender, 
@@ -275,7 +291,10 @@ contract DammHook is BaseHook {
         uint256 priceImpact = (priceAfterPreviousBlock > priceBeforePreviousBlock) ?
             (priceAfterPreviousBlock - priceBeforePreviousBlock) * 1e18 / priceBeforePreviousBlock :
             (priceBeforePreviousBlock - priceAfterPreviousBlock) * 1e18 / priceBeforePreviousBlock;
-        uint256 dynamicFee = BASE_FEE + priceImpact * 1 / 100; // 1% of price impact
+        uint256 dynamicPartOfFee = BASE_FEE * priceImpact / 1e18;
+        console.log("endogenousDynamicFee | dynamic Part of fee: ", dynamicPartOfFee);
+        uint256 dynamicFee = BASE_FEE + dynamicPartOfFee * 10 / 100; // 10% of price impact
+        console.log("endogenousDynamicFee | Dynamic Fee: ", dynamicFee);
         return dynamicFee;
     }
 
