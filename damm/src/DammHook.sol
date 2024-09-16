@@ -111,8 +111,9 @@ contract DammHook is BaseHook {
     }
 
     function calculateCombinedFee(uint256 blockId, address swapperId) internal returns (uint256) {
-        uint256 combinedFee = alpha * endogenousDynamicFee(blockId) + (100 - alpha) * exogenousDynamicFee(swapperId) / 100;
+        uint256 combinedFee = (alpha * endogenousDynamicFee(blockId) + (100 - alpha) * exogenousDynamicFee(swapperId)) / 100;
         combinedFee = combinedFee > endogenousDynamicFee(blockId) ? combinedFee : endogenousDynamicFee(blockId);
+        console.log("calculateCombinedFee | Combined Fee before cut-off percentile: ", combinedFee);
         if (combinedFee <= BASE_FEE * 125 / 100) {
             cutOffPercentile = cutOffPercentile + 5 > 100 ? 100 : cutOffPercentile + 5;
         }
@@ -120,6 +121,7 @@ contract DammHook is BaseHook {
             cutOffPercentile = cutOffPercentile - 5 < 50 ? 50 : cutOffPercentile - 5;
         }
         if (firstTransaction) {
+            console.log("calculateCombinedFee | First Transaction True:", firstTransaction);
             combinedFee *= 5;
             firstTransaction = false;
         }
@@ -334,13 +336,14 @@ contract DammHook is BaseHook {
             sum += sortedFees[i];
         }
         uint256 meanFee = sum / cutoffIndex;
+        console.log("exogenousDynamicFee | Mean Fee: ", meanFee);
         uint256 sigmaFee = 0;
         for (uint i = 0; i < cutoffIndex; i++) {
             sigmaFee += (sortedFees[i] - meanFee) ** 2;
         }
         sigmaFee = sqrt(sigmaFee / cutoffIndex);
+        console.log("exogenousDynamicFee | sigma Fee: ", sigmaFee);
         
-        //TODO replace previousBlockSwappers with senders
         bool isInSenders = isSwapperInSenders(swapperId);
         uint256 dynamicFee = isInSenders ? meanFee + m * sigmaFee : n * sigmaFee;
         return dynamicFee;
