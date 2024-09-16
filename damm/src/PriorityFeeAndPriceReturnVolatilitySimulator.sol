@@ -29,18 +29,22 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
     function generateRandomPriorityFeesStandardizedToThousand() public {
         // Random value between 1 and 1000
         for (uint256 i = 0; i < historicalBlocks; i++) {
-            uint256 randomPriorityFee = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 1000 + 1; 
-            priorityFees[i % historicalBlocks] = randomPriorityFee;
-            blockNumbers[i % historicalBlocks] = block.number + i;
+            uint256 randomPriorityFee = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 10_000 + 1; 
+            //priorityFees[i % historicalBlocks] = randomPriorityFee;
+            //blockNumbers[i % historicalBlocks] = block.number + i;
+            priorityFees[i] = randomPriorityFee;
+            blockNumbers[i] = block.number + i;
         }
     }
 
     function generateRandomPricesStandardizedToThousand() public {
         // Random value between 1 and 10000
         for (uint256 i = 0; i < historicalBlocks; i++) {
-            uint256 randomPrice = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 1000 + 1; 
-            prices[i % historicalBlocks] = randomPrice;
-            blockNumbers[i % historicalBlocks] = block.number + i;
+            uint256 randomPrice = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 10_000 + 1; 
+            //prices[i % historicalBlocks] = randomPrice;
+            //blockNumbers[i % historicalBlocks] = block.number + i;
+            prices[i] = randomPrice;
+            blockNumbers[i] = block.number + i;
         }
     }
 
