@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import {console} from "forge-std/console.sol";
+
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256 public historicalBlocks;
     uint256[] public priorityFees;
@@ -26,8 +28,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         }
     }
 
-    function calculateMean(
-        uint256[] memory data) internal view returns (uint256) {
+    function calculateMean(uint256[] memory data) internal pure returns (uint256) {
         uint256 sum = 0;
         for (uint256 i = 0; i < data.length; i++) {
             sum += data[i];
@@ -35,8 +36,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return sum / data.length;
     }
 
-    function calculateStdDev(
-        uint256[] memory data, uint256 mean) internal view returns (uint256) {
+    function calculateStdDev(uint256[] memory data, uint256 mean) internal pure returns (uint256) {
         uint256 variance = 0;
         for (uint256 i = 0; i < data.length; i++) {
             variance += (data[i] - mean) * (data[i] - mean);
@@ -45,8 +45,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return sqrt(variance);
     }
 
-    function standardizeData(
-        uint256[] memory data, uint256 mean, uint256 stdDev) internal view returns (uint256[] memory) {
+    function standardizeData(uint256[] memory data, uint256 mean, uint256 stdDev) internal pure returns (uint256[] memory) {
         uint256[] memory standardizedData = new uint256[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             standardizedData[i] = (data[i] - mean) * 1e18 / stdDev; // Multiply by 1e18 to maintain precision
@@ -54,7 +53,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         return standardizedData;
     }
 
-    function calculateVolatility(uint256[] memory data) internal view returns (uint256) {
+    function calculateVolatility(uint256[] memory data) internal pure returns (uint256) {
         uint256 mean = calculateMean(data);
         uint256 stdDev = calculateStdDev(data, mean);
         uint256[] memory standardizedData = standardizeData(data, mean, stdDev);
