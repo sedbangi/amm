@@ -17,7 +17,6 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
         index = 0;
     }
 
-    /*
     function recordData(uint256 priorityFee, uint256 price) public {
         if (block.number > blockNumbers[index]) {
             priorityFees[index] = priorityFee;
@@ -25,7 +24,7 @@ contract PriorityFeeAndPriceReturnVolatilitySimulator {
             blockNumbers[index] = block.number;
             index = (index + 1) % historicalBlocks;
         }
-    }*/
+    }
 
     function generateRandomPriorityFeesStandardizedToThousand() public {
         // Random value between 1 and 1000
