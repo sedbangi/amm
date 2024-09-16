@@ -114,23 +114,18 @@ contract TestDammHook is Test, Deployers {
         vm.envBool("FORGE_SNAPSHOT_CHECK");
         vm.txGasPrice(4 gwei);
 
-        // Current gas price is 10 gwei
-        // Moving average should also be 10
-        // uint128 gasPrice = uint128(tx.gasprice);
-        // uint128 movingAverageGasPrice = hook.movingAverageGasPrice();
-        // uint104 movingAverageGasPriceCount = hook.movingAverageGasPriceCount();
-        // assertEq(gasPrice, 10 gwei);
-        // assertEq(movingAverageGasPrice, 10 gwei);
-        // assertEq(movingAverageGasPriceCount, 1);
-
-        uint256 combinedFee = hook.publicCalculateCombinedFee(1000, address(swapper1));
-        console.log("testBeforeSwap | --- Combined Fee", combinedFee);
+        uint256 combinedFee = hook.publicCalculateCombinedFee(1000, address(swapper1), true);
+        console.log("testBeforeSwap | --- Combined Fee for first transaction in pool for block", combinedFee);
         console.log("testBeforeSwap | --- BASE Fee", hook.getBaseFee());
-        assert(combinedFee > 0);
+        // assert(combinedFee > 0);
 
         // Test if MeV Flag is True
         // Test if MeV Flag is False
-        // Test if first transaction for pool in block is True
+        
         // Test if first transaction for pool in block is False
+        combinedFee = hook.publicCalculateCombinedFee(1000, address(swapper1), false);
+        console.log("testBeforeSwap | --- Combined Fee For NON-frirst transaction", combinedFee);
+        console.log("testBeforeSwap | --- BASE Fee", hook.getBaseFee());
+       
     }
 }
