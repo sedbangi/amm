@@ -131,15 +131,6 @@ contract TestDammHook is Test, Deployers {
         vm.envBool("FORGE_SNAPSHOT_CHECK");
         vm.txGasPrice(4 gwei);
 
-        // Current gas price is 10 gwei
-        // Moving average should also be 10
-        // uint128 gasPrice = uint128(tx.gasprice);
-        // uint128 movingAverageGasPrice = hook.movingAverageGasPrice();
-        // uint104 movingAverageGasPriceCount = hook.movingAverageGasPriceCount();
-        // assertEq(gasPrice, 10 gwei);
-        // assertEq(movingAverageGasPrice, 10 gwei);
-        // assertEq(movingAverageGasPriceCount, 1);
-
         // --------------------------- TEST CASE #1 -----------------------------
         // ----------- SWAPPER 0 @ Block 1 with submitted fee 1000 --------------
         // ----------------------------------------------------------------------
@@ -166,78 +157,5 @@ contract TestDammHook is Test, Deployers {
         
         console.log("testBeforeSwap | --- Balance of token 1 before swap", balanceOfToken1Before);
         console.log("testBeforeSwap | --- Balance of token 1 after swap", balanceOfToken1After);
-        console.log("testBeforeSwap | --- Base Fee Output", outputFromBaseFeeSwap);
-
-        // vm.stopPrank();
-        // console.log("testBeforeSwap | --- PRANK STOPPED FOR ADDRESS", address(swapper0));
-
-
-
-        // --------------------------- TEST CASE #2 -----------------------------
-        // ----------- SWAPPER 1 @ Block 1 with submitted fee 1500 --------------
-        // ----------------------------------------------------------------------
-        // ----------------------------------------------------------------------
-
-        // console.log("testBeforeSwap | --- START PRANK WITH ADDRESS", address(swapper1));
-        // vm.startPrank(swapper1);
-
-        // params = IPoolManager.SwapParams({
-        //     zeroForOne: true,
-        //     amountSpecified: -0.00001 ether,
-        //     sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-        // });
-
-        // balanceOfToken1Before = currency1.balanceOf(address(swapper1));
-
-        // submittedDeltaFee = 1500;
-        // hookData = hook.getHookData(submittedDeltaFee);
-        // swapRouter.swap(key, params, testSettings, hookData);
-
-        // balanceOfToken1After = currency1.balanceOf(address(swapper1));
-        // outputFromBaseFeeSwap = balanceOfToken1After -
-        //             balanceOfToken1Before;
-        
-        // console.log("testBeforeSwap | --- Balance of token 1 before swap", balanceOfToken1Before);
-        // console.log("testBeforeSwap | --- Balance of token 1 after swap", balanceOfToken1After);
-        // console.log("testBeforeSwap | --- Base Fee Output", outputFromBaseFeeSwap);
-
-        // vm.stopPrank();
-        // console.log("testBeforeSwap | --- PRANK STOPPED FOR ADDRESS", address(swapper1));
-
-
-
-        // --------------------------- TEST CASE #2 -----------------------------
-        // ----------- SWAPPER 2 @ Block 1 with submitted fee 1700 --------------
-        // ----------------------------------------------------------------------
-        // ----------------------------------------------------------------------
-
-        // console.log("testBeforeSwap | --- START PRANK WITH ADDRESS", address(swapper2));
-        // vm.startPrank(swapper2);
-
-        // params = IPoolManager.SwapParams({
-        //     zeroForOne: true,
-        //     amountSpecified: -0.00001 ether,
-        //     sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-        // });
-
-        // balanceOfToken1Before = currency1.balanceOf(address(swapper2));
-
-        // submittedDeltaFee = 1700;
-        // hookData = hook.getHookData(submittedDeltaFee);
-        // swapRouter.swap(key, params, testSettings, hookData);
-
-        // balanceOfToken1After = currency1.balanceOf(address(swapper2));
-        // outputFromBaseFeeSwap = balanceOfToken1After -
-        //             balanceOfToken1Before;
-        
-        // console.log("testBeforeSwap | --- Balance of token 1 before swap", balanceOfToken1Before);
-        // console.log("testBeforeSwap | --- Balance of token 1 after swap", balanceOfToken1After);
-        // console.log("testBeforeSwap | --- Base Fee Output", outputFromBaseFeeSwap);
-
-        // vm.stopPrank();
-        // console.log("testBeforeSwap | --- PRANK STOPPED FOR ADDRESS", address(swapper2));
-
     }
-
-
 }

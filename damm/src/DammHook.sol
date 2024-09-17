@@ -12,7 +12,6 @@ import "./PriorityFeeAndPriceReturnVolatilitySimulator.sol";
 import {DammOracle} from "../src/DammOracle.sol";
 import {console} from "forge-std/console.sol";
 import {FeeQuantizer} from "../src/FeeQuantizer.sol";
-import {MevClassifier} from "../src/MevClassifier.sol";
 import {MathLibrary} from "../src/MathLibrary.sol";
 
 
@@ -24,7 +23,6 @@ contract DammHook is BaseHook {
     using LPFeeLibrary for uint24;
 
     FeeQuantizer feeQuantizer;
-    MevClassifier mevClassifier;
     DammOracle dammOracle;
 
     PriorityFeeAndPriceReturnVolatilitySimulator public simulator;
@@ -41,11 +39,8 @@ contract DammHook is BaseHook {
     error MustUseDynamicFee();
 
     //Storage for submittedDeltaFees
-    // uint256[] public submittedDeltaFees;
     mapping(address sender => uint256 inputAmount) public submittedDeltaFees;
-    //mapping(uint256 => bool) public previousBlockSwappers;
-
-    // TODO reset for a new block - maybe a Trader struct
+    
     address[] senders;
     uint256[2] blockNumbersStored;
     bool first_trx;
@@ -63,7 +58,6 @@ contract DammHook is BaseHook {
     // Initialize BaseHook parent contract in the constructor
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         feeQuantizer = new FeeQuantizer();
-        mevClassifier = new MevClassifier(5, 1, 2);
         dammOracle = new DammOracle();
         cutOffPercentile = 85;
         firstTransaction = true;
@@ -120,7 +114,7 @@ contract DammHook is BaseHook {
             cutOffPercentile = cutOffPercentile - 5 < 50 ? 50 : cutOffPercentile - 5;
         }
         if (firstTransaction) {
-            console.log("calculateCombinedFee | First Transaction True:", firstTransaction);
+            console.log("calculateCombinedFee | First Transaction True -> classified as MEV:", firstTransaction);
             combinedFee *= 5;
             firstTransaction = false;
         }
@@ -161,20 +155,16 @@ contract DammHook is BaseHook {
                 uint24 INTERIM_FEE = BASE_FEE;
                 uint256 trxPriorityFee = tx.gasprice - block.basefee;
 
-                console.log("beforeSwap | Priority Fee: ", trxPriorityFee);
+                console.log("beforeSwap | priority fee for current transaction: ", trxPriorityFee);
 
                 // Calculate sigma-priority fee
                 uint256 sigmaPriorityFee = dammOracle.getPriorityFeeVolatility();
-                console.log("beforeSwap | Priority Fee: ", sigmaPriorityFee);
-
-                // Calculate sigma of the price returns
-                // uint256 sigmaPriceReturn = dammOracle.getPriceVolatility();
-                // console.log("beforeSwap | Price Return: ", sigmaPriceReturn);
+                console.log("beforeSwap | sigma of priority fees from last m blocks: ", sigmaPriorityFee);
 
                 NewHookData memory data = abi.decode(hookData, (NewHookData));
                 address sender_address = data.sender;
                 console.log("beforeSwap | Blocknumber: ", currentBlockNumber);
-                console.log("beforeSwap | Sender: ", sender_address);
+                console.log("beforeSwap | swapper address: ", sender_address);
 
                 uint256 submittedDeltaFee = 0;
 
@@ -182,7 +172,7 @@ contract DammHook is BaseHook {
                     submittedDeltaFee = abi.decode(data.hookData, (uint256));
                 }
 
-                console.log("beforeSwap | Submitted Delta Fee: ", submittedDeltaFee);
+                console.log("beforeSwap | Submitted Delta Fee by this swapper (intent-to-trade) ", submittedDeltaFee);
                 
                 _checkForNewBlockAndCleanStorage(currentBlockNumber);
                 _storeSubmittedDeltaFee(sender_address, currentBlockNumber, submittedDeltaFee);
@@ -191,20 +181,25 @@ contract DammHook is BaseHook {
                 uint256 quantizedFee = feeQuantizer.getquantizedFee(fee);
                 console.log("beforeSwap | Quantized Fee: ", quantizedFee);
 
-                // // Adjust fee based on MEV classificatio
+                // // Adjust fee based on MEV classification
                 uint256 priorityFee = getPriorityFee();
-                console.log("beforeSwap | Priority Fee: ", priorityFee);
+                console.log("beforeSwap | priority fee for current transaction: ", priorityFee);
 
                 bool mevFlag = _checkForMEVbasedOnPrioFee(trxPriorityFee, sigmaPriorityFee);
-                console.log("beforeSwap | MEV Flag: ", mevFlag);
+                console.log("beforeSwap | classified as MEV (if priority_fee > sigma(historical priority fees in this pool from previous blocks)) ", mevFlag);
 
                 
                 // Fetch order book pressure from DammOracle
                 uint256 orderBookPressure = dammOracle.getOrderBookPressure();
                 console.log("beforeSwap | Order Book Pressure: ", orderBookPressure);
 
-                // // Adjust the fee based on order book pressure
-                // // ToDo: USE BUY OR SEll 
+                // 
+                /* 
+                NOTE: ToDo:
+                Adjust the fee based on order book pressure from the CEX
+                1. obtain order_book_pressure from the DammOracle contract, in the future from ChainLink etc.
+                2. Based on ZeroForOne flag, adjust the fee -> to incentivize the swapper to trade in the direction of the order book pressure
+                */
                 // if (orderBookPressure > 0 && !params.zeroForOne) {
                 //     INTERIM_FEE = BASE_FEE + uint24(calculateCombinedFee(currentBlockNumber, sender_address));
                 // } else if (orderBookPressure < 0 && !params.zeroForOne) {
@@ -229,7 +224,7 @@ contract DammHook is BaseHook {
         // currently returns the priority fee as a random number between 0 and 10000
         //uint256 minersTip = tx.gasprice - block.basefee;
         //return minersTip;
-        return random(10, 10000, 100) * 1000;
+        return random(10, 10000, 100) * 10;
     }
 
     function random(uint256 min, uint256 _max, uint256 nonce) public view returns (uint256) {
@@ -295,11 +290,10 @@ contract DammHook is BaseHook {
             } else {
                 senders.push(sender);
                 submittedDeltaFees[sender] = submittedDeltaFee;
-                console.log("submittedDeltaFee: ", submittedDeltaFee);
+                // NOTE: currently managed to prank only a single address
+                // ToDo: manage multiple addresses -> and then use the percentile operator and the mechanism to get mu and sigma described in the presentation
+                console.log("stored delta fees from swappers ", submittedDeltaFee);
             }
-
-            // TODO include intent to trade next block
-            // setIntendToTradeNextBlock[swapperId] = true;
         }
     }
 
@@ -319,6 +313,7 @@ contract DammHook is BaseHook {
     }
 
     function isSwapperInSenders(address swapperId) internal view returns (bool) {
+        // Intent to trade being checked!
         for (uint256 i = 0; i < senders.length; i++) {
             if (senders[i] == swapperId) {
                 return true;

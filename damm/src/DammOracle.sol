@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import {console} from "forge-std/console.sol";
 import {PriorityFeeAndPriceReturnVolatilitySimulator} from "../src/PriorityFeeAndPriceReturnVolatilitySimulator.sol";
-import {MevClassifier} from "../src/MevClassifier.sol";
 
 contract DammOracle {
     uint256 public OFF_CHAIN_MID_PRICE_ETH_USDT = 2200;
@@ -19,7 +18,6 @@ contract DammOracle {
     mapping(uint256 => uint256) public pricesAfter;
 
     constructor() {
-        // volatilityCalculator = new PriorityFeeAndPriceReturnVolatilitySimulator(100);
         simulator = new PriorityFeeAndPriceReturnVolatilitySimulator(200);
         simulator.generateDataAndCalculateVolatilities();
     }
@@ -54,12 +52,6 @@ contract DammOracle {
     function getPriorityFeeVolatility() public view returns (uint256) {
         return simulator.getPriorityFeeVolatility();
     }
-
-    /*
-    function getPriorityFeeVolatility() public view returns (uint256) {
-        return volatilityCalculator.getPriorityFeeVolatility();
-    }
-    */
 
     function random(uint256 min, uint256 max, uint256 nonce) internal view returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, nonce))) % (max - min + 1) + min;
