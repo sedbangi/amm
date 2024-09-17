@@ -59,6 +59,7 @@ contract DammHook is BaseHook {
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         feeQuantizer = new FeeQuantizer();
         dammOracle = new DammOracle();
+        // NOTE: this is simplistiv VCG auction, which discards the top 15% of the submitted fees
         cutOffPercentile = 85;
         firstTransaction = true;
         alpha = 50;
@@ -104,9 +105,15 @@ contract DammHook is BaseHook {
     }
 
     function calculateCombinedFee(uint256 blockId, address swapperId) internal returns (uint256) {
+        // NOTE: the combined fee is calculated as a weighted average of the endogenous and exogenous dynamic fees
+        // the weight is determined by the alpha parameter and is set to 0.5
+        // one could very well adapt the alpha parameter to the current market conditions and having varied versions of endogenous and exogenous dynamic fees
+        // where endogenous dynamic fees are based on pool prices, volatilities etc
+        // and exogenous dynamic fees are based on the historical submitted fees by the swappers
         uint256 combinedFee = (alpha * endogenousDynamicFee(blockId) + (100 - alpha) * exogenousDynamicFee(swapperId)) / 100;
         combinedFee = combinedFee > endogenousDynamicFee(blockId) ? combinedFee : endogenousDynamicFee(blockId);
         console.log("calculateCombinedFee | Combined Fee before cut-off percentile: ", combinedFee);
+        // NOTE: allows adaptation of the cut-off percentile based on a simple heuristic comparison of the combined fee with the base fee
         if (combinedFee <= BASE_FEE * 125 / 100) {
             cutOffPercentile = cutOffPercentile + 5 > 100 ? 100 : cutOffPercentile + 5;
         }
