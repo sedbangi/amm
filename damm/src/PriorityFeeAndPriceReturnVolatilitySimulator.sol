@@ -4,6 +4,12 @@ pragma solidity 0.8.26;
 
 import {console} from "forge-std/console.sol";
 
+
+/**
+ * @title PriorityFeeAndPriceReturnVolatilitySimulator
+ * @notice This contract simulates the volatility of priority fees and prices -> shall be swapped with a real oracle in the future
+ */
+
 contract PriorityFeeAndPriceReturnVolatilitySimulator {
     uint256 public historicalBlocks;
     uint256[] public priorityFees;
