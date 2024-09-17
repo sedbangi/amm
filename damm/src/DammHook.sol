@@ -231,7 +231,7 @@ contract DammHook is BaseHook {
         // currently returns the priority fee as a random number between 0 and 10000
         //uint256 minersTip = tx.gasprice - block.basefee;
         //return minersTip;
-        return random(10, 10000, 100) * 10;
+        return random(10, 10000, 100);
     }
 
     function random(uint256 min, uint256 _max, uint256 nonce) public view returns (uint256) {
