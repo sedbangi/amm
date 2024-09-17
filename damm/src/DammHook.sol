@@ -255,7 +255,7 @@ contract DammHook is BaseHook {
         // current block = block t
         if(currentBlockNumber == blockNumbersStored[1]) {
             first_trx = false;
-            console.log("_checkForNewBlockAndCleanStorage | no new block");
+            console.log("_checkForNewBlockAndCleanStorage | not a new block");
             return;
         }
 
@@ -264,7 +264,7 @@ contract DammHook is BaseHook {
         if(currentBlockNumber > blockNumbersStored[1]) {
             delete senders;
             first_trx = true;
-            console.log("_checkForNewBlockAndCleanStorage | first trx, deleting senders");
+            console.log("_checkForNewBlockAndCleanStorage | first trx, deleting senders who submitted fees from previous block and preparing the list for the new block");
         }
 
         // new block
